@@ -129,7 +129,7 @@ contract UnstoppableVault is IERC3156FlashLender, ReentrancyGuard, Owned, ERC462
 
 This contract provides the functionality for executing flash loans and managing the fees associated with them. It ensures that the flash loan is properly executed and that the fees are transferred to the designated fee recipient.
 
-- The contract defines constants such as FEE_FACTOR (0.05 ether) and GRACE_PERIOD (30 days).
+- The contract defines constants such as **FEE_FACTOR (0.05 ether)** and **GRACE_PERIOD (30 days)**.
 - The contract has a feeRecipient address variable that stores the address where the flash loan fees will be sent.
 
 In the constructor initializes the feeRecipient address and emits an event to notify the update.
@@ -195,9 +195,9 @@ contract ReceiverUnstoppable is Owned, IERC3156FlashBorrower {
 }
 ```
 
-This is a smart contract called `ReceiverUnstoppable` that is designed to receive flash loans from the UnstoppableVault contract.
+This is a smart contract called `ReceiverUnstoppable` that is designed to receive flash loans from the `UnstoppableVault` contract.
 
-The contract imports the IERC3156FlashBorrower interface from the OpenZeppelin library, which allows it to interact with the flash loan functionality. Also it imports the Owned contract from the solmate library, which provides ownership functionality.
+The contract imports the **IERC3156FlashBorrower** interface from the OpenZeppelin library, which allows it to interact with the flash loan functionality. Also it imports the Owned contract from the solmate library, which provides ownership functionality.
 
 And, the contract has a constructor function that takes the address of the UnstoppableVault contract as a parameter and sets it as an immutable variable.
 
@@ -217,9 +217,9 @@ You start with 10 DVT tokens in balance.
 
 ## DoS Attack In Solidity
 
-There are many ways to attack a smart contract to make it unusable. DoS is one of the most popular way to perform this aim. Shortly, any interference with a Service that reduces or loses its availability is called a Denial of Service. Simply put, normal service requests that a user needs cannot be processed by the system. For example, when a computer system crashes or its bandwidth is exhausted or its hard disk is filled up so that it cannot provide normal service, it constitutes a DoS. 
+There are many ways to attack a smart contract to make it unusable. DoS is one of the most popular way to perform this aim. Shortly, any interference with a Service that reduces or **loses its availability** is called a Denial of Service. Simply put, normal service requests that a user needs cannot be processed by the system. For example, when a computer system crashes or its bandwidth is exhausted or its hard disk is filled up so that it cannot provide normal service, it constitutes a DoS. 
 
-In the blockchain, DoS attacks disrupt, suspend, or freeze the execution of a normal contract, or even the logic of the contract itself.
+**In the blockchain, DoS attacks disrupt, suspend, or freeze the execution of a normal contract, or even the logic of the contract itself**.
 
 #### Example: King Of Ether
 
@@ -286,7 +286,7 @@ contract Attack {
 
 ## How to prevent DoS Attack?
 
-To prevent this attack, developers can modify the King of the Ether smart contract to utilize a withdrawal pattern that enables players to withdraw their winnings instead of having them sent directly from the play function. Here’s an example implementation:
+To prevent this attack, developers can modify the King of the Ether smart contract to utilize a **withdrawal pattern** that enables players to withdraw their winnings instead of having them sent directly from the play function. Here’s an example implementation:
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -320,11 +320,11 @@ contract KingOfEther {
 
 # Subverting
 
-To discharge this challenge, we must broken vault's flashs with enforce `(convertToShares(totalSupply) != balanceBefore)` condition.
+To discharge this challenge, we must broken vault's flashs with enforcing `(convertToShares(totalSupply) != balanceBefore)` condition.
 
 In the `UnstoppableVault` contract, the asset is the underlying token called `DVT` that user deposit/withdraw into the vault. And the share is the amount of vault tokens called `oDVT` that the vault mint/burn for users to represent their deposited assets.
 
-ERC4626 is an extension of ERC20 that proposes a standard interface for token vaults. `convertToShares()` function returns the amount of shares that would be exchanged by the vault for the amount of assets provided. In this case, this function open to enforce. In other words, totalSupply of the vault tokens should always equal totalAsset of underlying tokens before any flash loan execution. If there are other implementations of the vault that divert asset tokens to other contracts, the flashLoan function would be inactive.
+ERC4626 is an extension of ERC20 that proposes a standard interface for token vaults. `convertToShares()` function returns the amount of shares that would be exchanged by the vault for the amount of assets provided. In this case, this function open to enforce. In other words, totalSupply of the vault tokens should always equal totalAsset of underlying tokens before any flash loan execution.If there exist alternative implementations of the vault that route asset tokens to different contracts, the flashLoan function would remain non-operational.
 
 Since the contract is an ERC20, we can use transfer() to send DVT tokens to it. Thus, the lender is unable to provide any additional flashloans.
 
