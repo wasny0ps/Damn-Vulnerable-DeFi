@@ -70,6 +70,10 @@ To pass this challenge, take all tokens out of the pool. If possible, in a singl
 
 # Subverting
 
+The `flashLoan()` function allows one to take a flash loan and then ensures that the loan has been paid back. This function execute `target.functionCall(data)` command which gives us ability of calling a low-level function. In other words, we can call ERC20 standart token's functions. Like `approve()`...
+
+In this case, we can call `approve()` function to approve all balance. After then, we clearly call flashLoan function to transfer all token from the pool contract with passing first paramater as 0. Here is our attack contract looks like:
+
 
 ```solidity
 pragma solidity ^0.8.0;
@@ -93,11 +97,17 @@ contract AttackTruster {
 }
 ```
 
+Basically, it gets the address of the `TrusterLenderPool` contract in the constructor. Later, it gets the pool contract's balance. Next, it encodes the data variable with the abi signature parameter as the approve function and its parameters we will have sent when the functionCall() is executed.
+
+In the final step, first we call the flashLoan function to execute data. Lastly, we transfer all tokens to our balance. Here is attacker commands:
+
 ```js
 const AttackFactory = await ethers.getContractFactory('AttackTruster', deployer);
 attack = await AttackFactory.deploy(pool.address);
 await attack.connect(player).attack(token.address);
 ```
+
+Solve the challenge.
 
 ```powershell
   [Challenge] Truster
