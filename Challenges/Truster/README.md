@@ -70,9 +70,9 @@ To pass this challenge, take all tokens out of the pool. If possible, in a singl
 
 # Subverting
 
-The `flashLoan()` function allows one to take a flash loan and then ensures that the loan has been paid back. This function execute `target.functionCall(data)` command which gives us ability of calling a low-level function. In other words, we can call ERC20 standart token's functions. Like `approve()`...
+The `flashLoan()` function allows one to take a flash loan and then ensures that the loan has been paid back. This function executes the `target.functionCall(data)` command which gives us the ability to call a low-level function. In other words, we can call the ERC20 standard token's functions. Like `approve()`...
 
-In this case, we can call `approve()` function to approve all balance. After then, we clearly call flashLoan function to transfer all token from the pool contract with passing first paramater as 0. Here is our attack contract looks like:
+In this case, we can call the `approve()` function to approve all balances. After that, we clearly call the `flashLoan()` function to transfer all tokens from the pool contract by passing the first parameter as 0. Here is what our attack contract looks like:
 
 
 ```solidity
