@@ -181,7 +181,7 @@ pragma solidity ^0.8.0;
 import "../naive-receiver/NaiveReceiverLenderPool.sol";
 import "@openzeppelin/contracts/interfaces/IERC3156FlashBorrower.sol";
 
-contract Attack {
+contract AttackNaiveReceiver {
     constructor(address payable _pool, address payable _receiver){
         NaiveReceiverLenderPool pool = NaiveReceiverLenderPool(_pool);
         address ETH = pool.ETH();
@@ -193,7 +193,7 @@ contract Attack {
 ```
 
 ```js
-const AttackFactory = await ethers.getContractFactory('Attack', deployer);
+const AttackFactory = await ethers.getContractFactory('AttackNaiveReceiver', deployer);
 attack = await AttackFactory.deploy(pool.address, receiver.address);
 ```
 
