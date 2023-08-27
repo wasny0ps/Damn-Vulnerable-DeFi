@@ -178,9 +178,9 @@ When we look at the `onFlashLoan()` function in the `FlashLoanReceiver` contract
 function onFlashLoan(address,address token,uint256 amount,uint256 fee,bytes calldata) external;
 ```
 
-This vulnerability represents a typical Access Control issue, providing us with the means to carry out Flash Loans in the name of the FlashLoanReceiver.
+This vulnerability represents a typical **access control issue**, providing us with the means to carry out Flash Loans in the name of the `FlashLoanReceiver`.
 
-Given that the receiver is obligated to pay 1 ETH per loan, it becomes conceivable to execute multiple transactions, gradually depleting their balance through fees (10 flash loans * 1 ETH per flash loan). This exploitation underlines the critical significance of a robust Access Control implementation to thwart unauthorized actions and uphold the integrity of the system.
+Given that the receiver is obligated to pay 1 ETH per loan, it becomes conceivable to execute multiple transactions, gradually depleting their balance through fees (10 flash loans * 1 ETH per flash loan). This exploitation underlines the critical significance of a robust access control implementation to thwart unauthorized actions and uphold the integrity of the system.
 
 
 
@@ -206,7 +206,7 @@ contract AttackNaiveReceiver {
 }
 ```
 
-Shortly, it gets pool and receiver contracts addresses in the constructor. Then call `flashLoan()` function ten times. Here is attacker commands:
+Shortly, it gets pool and receiver contracts addresses in the constructor. Then call `flashLoan()` function to exploit the susceptible contract **in a single transaction**. We need to develop a malevolent smart contract that initiates a **series of 10 flash loan requests**. In brief, during the construction phase, we will initiate 10 flash loans on behalf of the `_receiver` with the intention of depleting this ETH balance. Here is attacker commands:
 
 ```js
 const AttackFactory = await ethers.getContractFactory('AttackNaiveReceiver', deployer);
