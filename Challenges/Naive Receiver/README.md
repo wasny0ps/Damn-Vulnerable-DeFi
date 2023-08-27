@@ -197,7 +197,7 @@ const AttackFactory = await ethers.getContractFactory('Attack', deployer);
 attack = await AttackFactory.deploy(pool.address, receiver.address);
 ```
 
-```js
+```powershell
   [Challenge] Naive receiver
     ✔ Execution (294ms)
 
