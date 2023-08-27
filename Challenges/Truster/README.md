@@ -97,9 +97,9 @@ contract AttackTruster {
 }
 ```
 
-Basically, it gets the address of the `TrusterLenderPool` contract in the constructor. Later, it gets the pool contract's balance. Next, it encodes the data variable with the abi signature parameter as the approve function and its parameters we will have sent when the functionCall() is executed.
+Basically, it gets the address of the `TrusterLenderPool` contract in the constructor. Later, it gets the pool contract's balance. Next, it **encodes the data variable with the abi signature parameter as the approve function and its parameters** we will have sent when the `functionCall()` is executed.
 
-In the final step, first we call the flashLoan function to execute data. Lastly, we transfer all tokens to our balance. Here is attacker commands:
+In the final step, first, we call the flashLoan function to execute data. Lastly, we transfer all tokens to our balance. Here are the attacker commands:
 
 ```js
 const AttackFactory = await ethers.getContractFactory('AttackTruster', deployer);
