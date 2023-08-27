@@ -207,4 +207,9 @@ attack = await AttackFactory.deploy(pool.address, receiver.address);
 Done in 2.88s.
 ```
 
+## Security Takeaways
+
+To mitigate such attacks, recipient contracts equipped with fee-handling logic should consistently integrate a validation check to verify that calls are exclusively made from whitelisted addresses. This precautionary measure serves to restrict the ability of arbitrary addresses to request flash loans on behalf of the contract.
+
+
 **_by wasny0ps_**
