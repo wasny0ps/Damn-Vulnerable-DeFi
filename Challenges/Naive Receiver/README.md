@@ -152,7 +152,7 @@ contract NaiveReceiverLenderPool is ReentrancyGuard, IERC3156FlashLender {
 
 The NaiveReceiverLenderPool contract is a flash loan pool that allows users to borrow ETH using the flash loan mechanism.
 
-`maxFlashLoan()` : 
+`maxFlashLoan()` : It returns the maximum amount that can be borrowed in a flash loan, while the flashFee function calculates the fee to be charged for a flash loan.
 
 `flashFee()` : It returns the fee that needs to be paid for a flash loan. In this case, it returns a fixed fee of 1 ETH.
 
