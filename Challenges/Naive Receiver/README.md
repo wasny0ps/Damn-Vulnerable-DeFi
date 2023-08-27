@@ -172,7 +172,21 @@ Take all ETH out of the user’s contract. If possible, in a single transaction.
 
 # Suberting
 
-When we look
+When we look at the `onFlashLoan()` function in the `FlashLoanReceiver` contract, it is so interesting that the first parameter of this function was ignored. This parameter serves to identify the account initiating the flash loan, essentially **enabling anyone to trigger flash loans on behalf of others**.
+
+```solidity
+function onFlashLoan(address,address token,uint256 amount,uint256 fee,bytes calldata) external;
+```
+
+This vulnerability represents a typical Access Control issue, providing us with the means to carry out Flash Loans in the name of the FlashLoanReceiver.
+
+Given that the receiver is obligated to pay 1 ETH per loan, it becomes conceivable to execute multiple transactions, gradually depleting their balance through fees (10 flash loans * 1 ETH per flash loan). This exploitation underlines the critical significance of a robust Access Control implementation to thwart unauthorized actions and uphold the integrity of the system.
+
+
+
+<p align="center"><img src="https://miro.medium.com/v2/resize:fit:720/format:webp/0*uyXoTciQxy3M-2TA.png"></p>
+
+Here is our attack contract:
 
 
 ```solidity
@@ -192,10 +206,14 @@ contract AttackNaiveReceiver {
 }
 ```
 
+Shortly, it gets pool and receiver contracts addresses in the constructor. Then call `flashLoan()` function ten times. Here is attacker commands:
+
 ```js
 const AttackFactory = await ethers.getContractFactory('AttackNaiveReceiver', deployer);
 attack = await AttackFactory.deploy(pool.address, receiver.address);
 ```
+
+Solve the challenge.
 
 ```powershell
   [Challenge] Naive receiver
@@ -209,7 +227,7 @@ Done in 2.88s.
 
 ## Security Takeaways
 
-To mitigate such attacks, recipient contracts equipped with fee-handling logic should consistently integrate a validation check to verify that calls are exclusively made from whitelisted addresses. This precautionary measure serves to restrict the ability of arbitrary addresses to request flash loans on behalf of the contract.
+To mitigate such attacks, recipient contracts equipped with fee-handling logic should consistently **integrate a validation check to verify that calls are exclusively made from whitelisted addresses**. This precautionary measure serves to restrict the ability of arbitrary addresses to request flash loans on behalf of the contract.
 
 
 **_by wasny0ps_**
