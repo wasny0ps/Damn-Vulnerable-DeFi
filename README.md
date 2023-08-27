@@ -2,7 +2,7 @@
 | Challenge | Writeup | Level | Difficulty | Key Field |
 | :---: | :---: | :---: | :---: | :---: |
 |<img height="150" src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/blob/main/src/1.png">|[**Unstoppable**](https://github.com/wasny0ps/Damn-Vulnerable-DeFi/tree/main/Challenges/Unstoppable)|**1**|**Medium**|**DoS & ERC4626**|
-|<img height="150" src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/blob/main/src/2.png">|[**Naive Receiver**](https://github.com/wasny0ps/Damn-Vulnerable-DeFi/tree/main/Challenges/Naive%20Receiver)|**2**|**Easy**|**Missing Checks**|
+|<img height="150" src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/blob/main/src/2.png">|[**Naive Receiver**](https://github.com/wasny0ps/Damn-Vulnerable-DeFi/tree/main/Challenges/Naive%20Receiver)|**2**|**Easy**|**Access Control**|
 |<img height="150" src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/blob/main/src/3.png">|[**Truster**](https://github.com/wasny0ps/Damn-Vulnerable-DeFi/tree/main/Challenges/Truster)|**3**|**-**|**-**|
 |<img height="150" src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/blob/main/src/4.png">|[**Side Entrance**](https://github.com/wasny0ps/Damn-Vulnerable-DeFi/tree/main/Challenges/Side%20Entrance)|**4**|**-**|**-**|
 |<img height="150" src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/blob/main/src/5.png">|[**The Rewarder**](https://github.com/wasny0ps/Damn-Vulnerable-DeFi/tree/main/Challenges/The%20Rewarder)|**5**|**-**|**-**|
