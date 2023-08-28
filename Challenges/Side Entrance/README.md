@@ -96,13 +96,6 @@ This code defines a contract with a public state variable myVar and a state-modi
 
 When this contract is compiled with solc 0.5.0 or later, attempting to call the myFunction function will result in a revert because of the use of the STATICCALL opcode. The correct way to label this function would be to remove the constant keyword and label it as **pure** instead, since it does not read or modify the state of the contract.
 
-# Subverting
-
-The SideEntranceLenderPool contract is part of the Damn Vulnerable DeFi project and is used to simulate a lending pool where users can deposit and withdraw funds. However, this contract has a vulnerability that allows an attacker to exploit it and borrow more funds than they actually have.
-
-
-The vulnerability in this contract arises from the fact that the flashLoan() function does not check if the borrower has sufficient funds to repay the loan. This allows an attacker to borrow a large amount of Ether from the pool, manipulate the borrowed funds, and then repay the loan with the manipulated funds.
-
 ## Security Practice
 
 There are different ways of missing state-modifying functions that we may come accross in smart contract auditing. What is more, this issue causes a gas increment so you can notify this bug in your report. In this challenge, the **execute()** function should be marked as `view` for prevent the any dangerous override action.
@@ -126,6 +119,45 @@ interface IFlashLoanEtherReceiver {
 ```
 
 As you can see, it is easy to stay secure. The important point is to check the function's features correspond to the process in the function and not neglect to use gas-safer opcodes. You can get more information about opcodes from [here.](https://ethereum.org/en/developers/docs/evm/opcodes/)
+
+# Subverting
+
+The SideEntranceLenderPool contract is part of the Damn Vulnerable DeFi project and is used to simulate a lending pool where users can deposit and withdraw funds. However, this contract has a vulnerability that allows an attacker to exploit it and borrow more funds than they actually have.
+
+
+The vulnerability in this contract arises from the fact that the flashLoan() function does not check if the borrower has sufficient funds to repay the loan. This allows an attacker to borrow a large amount of Ether from the pool, manipulate the borrowed funds, and then repay the loan with the manipulated funds.
+
+The vulnerability in this contract stems from its implementation of two distinct accounting systems. By exploiting this flaw, we can perform the following sequence of actions:
+
+1. Call the `flashLoan()` function with the maximum possible value for a flash loan.
+2. Deposit this loaned amount back into the contract using the `deposit()` function.
+
+This sequence allows us to bypass the verification step in the `flashLoan()` function, which checks if the debt has been repaid. Simultaneously, it allows us to manipulate the internal accounting of the contract. This manipulation grants us the ability to immediately execute the `withdraw()` function on the deposited amount.
+
+The reason behind this manipulation is that the `deposit()` and `withdraw()` functions interact with and update the `balances` mapping, whereas the `flashLoan()` function relies on the contract's balance accessed via `address(this).balance`. This disconnect between the two accounting mechanisms creates an exploitable vulnerability.
+
+```js
+// Start
+address(this).balance = 1000 Ether
+balances(player) = 0
+player = 1 Ether
+
+// Get Loan
+address(this).balance = 0 Ether
+balances(player) = 0
+player = 1001 Ether
+
+// Repay Loan via Deposit
+address(this).balance = 1000 Ether
+balances(player) = 1000
+player = 1 Ether
+
+// Withdraw The Ether
+address(this).balance = 0 Ether
+balances(player) = 0
+player = 1001 Ether
+```
+Here is the our attack contract:
 
 ```solidity
 pragma solidity ^0.8.0;
