@@ -326,7 +326,7 @@ In the `UnstoppableVault` contract, the asset is the underlying token called `DV
 
 **ERC4626** is an extension of ERC20 that proposes a standard interface for token vaults. `convertToShares()` function returns the amount of shares that would be exchanged by the vault for the amount of assets provided. In this case, this function **open to enforce**. In other words, `totalSupply` of the vault tokens should always equal `totalAsset` of underlying tokens before any flash loan execution. If there exist alternative implementations of the vault that route asset tokens to different contracts, the `flashLoan()` function would remain non-operational.
 
-Since the contract is an ERC20, we can use `transfer()` to send DVT tokens to it. Thus, the lender is unable to provide any additional flashloans. Here is attacker commands:
+Since the contract is an ERC20, we can use `transfer()` to send DVT tokens to it. Thus, the lender is unable to provide any additional flashloans. Here are attacker commands:
 
 ```js
 await token.transfer(vault.address, token.balanceOf(player.address));
