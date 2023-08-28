@@ -19,7 +19,7 @@ import "solady/src/auth/OwnableRoles.sol";
  * @notice A limited pseudo-ERC20 token to keep track of deposits and withdrawals
  *         with snapshotting capabilities.
  */
-contract AccountingToken is ERC20Snapshot, OwnableRoles {
+contract Accounting is ERC20Snapshot, OwnableRoles {
     uint256 public constant MINTER_ROLE = _ROLE_0;
     uint256 public constant SNAPSHOT_ROLE = _ROLE_1;
     uint256 public constant BURNER_ROLE = _ROLE_2;
@@ -274,7 +274,7 @@ contract TheRewarderPool {
 }
 ```
 
-This contract is called `TheRewarderPool` and it is used to distribute rewards to users who deposit liquidity tokens into the pool. The contract uses three different tokens: **the liquidity token, **the accounting token**, and **the reward token**.
+This contract is called `TheRewarderPool` and it is used to distribute rewards to users who deposit liquidity tokens into the pool. The contract uses three different tokens: **the liquidity token**, **the accounting token**, and **the reward token**.
 
 
 The liquidity token represents the tokens deposited by users into the pool. The accounting token is used for internal accounting and snapshots, and it is pegged 1:1 with the liquidity token. 
