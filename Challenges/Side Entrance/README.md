@@ -69,12 +69,63 @@ Challlenge's message:
 It has 1000 ETH in balance already, and is offering free flash loans using the deposited ETH to promote their system.
 Starting with 1 ETH in balance, pass the challenge by taking all ETH from the pool.
 
+## Missing State-Modifying Functions
+
+Smart contracts are self-executing programs that automatically enforce the rules and regulations of a contract. One of the main advantages of smart contracts is that they are transparent and immutable, but this also means that once deployed, the code cannot be changed. Therefore, it is important to ensure that the code is secure before deployment.
+
+One potential security pitfall in Solidity is the use of state-modifying functions that are incorrectly labelled as **constant/pure/view** functions. In Solidity versions prior to 0.5.0, it was possible to modify state variables within a constant/pure/view function using assembly code. However, in solc 0.5.0 and later versions, this is no longer possible due to the use of the **STATICCALL** opcode.
+
+The STATICCALL opcode is a **read-only call** that is similar to the CALL opcode, but with the added constraint that **it does not modify the state of the contract**. This opcode was introduced to **improve gas efficiency by allowing the EVM to avoid the overhead of tracking the modifications made by a function**. However, this also means that any state-modifying code that is executed within a function labelled as constant/pure/view will now result in a revert.
+
+For example, consider the following Solidity code:
+
+```solidity
+pragma solidity >=0.5.0;
+
+contract MyContract {
+
+  uint256 public myVar;
+
+  function myFunction(uint256 _value) public constant returns (uint256) {
+      myVar = _value;
+      return myVar;
+  }
+}
+```
+This code defines a contract with a public state variable myVar and a state-modifying function myFunction that sets the value of myVar. However, the myFunction function is labelled as constant, which is incorrect because it modifies the state of the contract.
+
+When this contract is compiled with solc 0.5.0 or later, attempting to call the myFunction function will result in a revert because of the use of the STATICCALL opcode. The correct way to label this function would be to remove the constant keyword and label it as **pure** instead, since it does not read or modify the state of the contract.
+
 # Subverting
 
 The SideEntranceLenderPool contract is part of the Damn Vulnerable DeFi project and is used to simulate a lending pool where users can deposit and withdraw funds. However, this contract has a vulnerability that allows an attacker to exploit it and borrow more funds than they actually have.
 
 
 The vulnerability in this contract arises from the fact that the flashLoan() function does not check if the borrower has sufficient funds to repay the loan. This allows an attacker to borrow a large amount of Ether from the pool, manipulate the borrowed funds, and then repay the loan with the manipulated funds.
+
+## Security Practice
+
+There are different ways of missing state-modifying functions that we may come accross in smart contract auditing. What is more, this issue causes a gas increment so you can notify this bug in your report. In this challenge, the **execute()** function should be marked as `view` for prevent the any dangerous override action.
+
+Let's look at these contract examples to understand better.
+
+```solidity
+interface IFlashLoanEtherReceiver {
+    function execute() external payable;
+}
+
+// Vulnerable Code
+```
+
+```solidity
+interface IFlashLoanEtherReceiver {
+    function execute() external view payable;
+}
+
+// Safe Code
+```
+
+As you can see, it is easy to stay secure. The important point is to check the function's features correspond to the process in the function and not neglect to use gas-safer opcodes. You can get more information about opcodes from [here.](https://ethereum.org/en/developers/docs/evm/opcodes/)
 
 ```solidity
 pragma solidity ^0.8.0;
