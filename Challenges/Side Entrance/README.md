@@ -183,6 +183,7 @@ contract AttackSideEntrance{
 
 }
 ```
+In brief, this contract gets an instance of the pool contract. Then, call the `flashLaoan()` function to trigger the `execute()` function in the attack contract. So, we will get 1000 ETH in our balance and deposit them into the pool contract as the attack contract's balance. Finally, we will get back all ETH by transferring the balance. Here are attacker commands:
 
 ```js
 const AttackFactory = await ethers.getContractFactory('AttackSideEntrance', deployer);
