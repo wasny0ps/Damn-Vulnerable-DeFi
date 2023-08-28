@@ -107,6 +107,7 @@ attack = await AttackFactory.deploy();
 await attack.connect(player).attack(pool.address);
 ```
 
+Solve the challenge.
 
 ```powershell
  [Challenge] Side entrance
@@ -117,3 +118,6 @@ await attack.connect(player).attack(pool.address);
 
 Done in 2.56s.
 ```
+
+
+**_by wasny0ps_**
