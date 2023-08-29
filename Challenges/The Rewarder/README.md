@@ -361,6 +361,8 @@ attack = await AttackFactory.deploy(rewarderPool.address,rewardToken.address,fla
 await ethers.provider.send("evm_increaseTime", [5 * 24 * 60 * 60]); // 5 days
 await attack.connect(player).attack(TOKENS_IN_LENDER_POOL);
 ```
+Failed.
 
-![image](https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/fb8a0bfb-71fe-4d84-847b-8d4e060aed43)
+<p align="center"><img width="250" src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/fb8a0bfb-71fe-4d84-847b-8d4e060aed43"></p>
 
+**_by wasny0ps_**
