@@ -67,7 +67,7 @@ contract FlashLoanReceiver is IERC3156FlashBorrower {
     receive() external payable {}
 }
 ```
-This contract is a Flash Loan receiver, which means it can borrow funds temporarily from a lending pool and execute actions with those funds within a single transaction.
+This contract is a flash loan receiver, which means it can borrow funds temporarily from a lending pool and execute actions with those funds within a single transaction.
 
 `onFlashLoan()` : This function is the callback function that is called when the flash loan is executed. It takes the flash loan details as parameters: the address of the token being borrowed, the amount of the loan, the fee charged by the lending pool, and additional data.
 
@@ -158,7 +158,7 @@ The NaiveReceiverLenderPool contract is a flash loan pool that allows users to b
 
 `flashLoan()` : It provides the flash loan functionality. It takes the borrower's address, the token to be borrowed (in this case, only ETH is supported), the amount to be borrowed, and any additional data required by the borrower.
 
-Inside the function, it first checks if the token is supported (only ETH is supported in this case). It then transfers the requested amount of ETH to the borrower's address. After that, it calls the borrower's onFlashLoan function, passing the necessary parameters. If the borrower's callback function returns the CALLBACK_SUCCESS value, it checks if the contract's balance is greater than or equal to the initial balance plus the fixed fee. If not, it reverts the transaction.
+Inside the function, it first checks if the token is supported (only ETH is supported in this case). It then transfers the requested amount of ETH to the borrower's address. After that, it calls the borrower's onFlashLoan function, passing the necessary parameters. If the borrower's callback function returns the `CALLBACK_SUCCESS` value, it checks if the contract's balance is greater than or equal to the initial balance plus the fixed fee. If not, it reverts the transaction.
 
 
 The `receive()` function is a fallback function that allows the contract to receive ETH deposits.
