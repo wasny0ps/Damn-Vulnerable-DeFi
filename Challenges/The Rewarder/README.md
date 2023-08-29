@@ -306,6 +306,14 @@ By the way, rumours say a new pool has just launched. Isn’t it offering flash 
 # Subverting
 
 ```solidity
+rewards = amountDeposited.mulDiv(REWARDS, totalDeposits);
+```
+
+The reward calculation method in use here doesn't take into account the length of time tokens have been staked within the pool. Instead, it solely relies on the total deposits within the pool at the specific instance when the distribution occurs.
+
+This creates an opportunity for manipulation. Imagine depositing a substantial flash loan precisely at the onset of a new reward round (e.g., precisely 5 days after the previous round). In this scenario, despite having staked your tokens for just one transaction, we could potentially exploit this system to receive a disproportionately substantial share of rewards. Here is an example attack contract:
+
+```solidity
 pragma solidity ^0.8.0;
 
 interface IDVT{
@@ -354,14 +362,28 @@ contract AttackTheRewarder{
 
 }
 ```
+In summary, this contract gets instances of contracts in the constructor. After then, here is process tree will look like:
+
+- In the `attack()` function, we will call `flashLoan()` function take a loan for the maximum DVT tokens in the pool.
+- The process will be directed to our custom function, `receiveFlashLoan()`, which will handle the tokens obtained from the loan.
+- Then, we will initiate the deposit process by calling the `rewarderPool.deposit()` function, transferring our DVT tokens into the pool. In return, we will receive accounting tokens, which represent our share in the rewards. The `deposit()` function within `TheRewarderPool` contract will, in turn, trigger the execution of the `distributeRewards()` function. It's crucial to note that, at this stage, we should ensure that we are the sole participants in depositing into the pool to maximize our reward.
+
+To achieve this, we must confirm that a new round has started, meaning that a minimum of 5 days has elapsed since the last round. In our testing environment, we will manipulate time using `evm_increaseTime` to simulate the passage of time and trigger the start of a new round. Next:
+
+- After successfully minting the rewards within our contract, the next step involves transferring these rewards to the attacker's designated address.
+- Later, the `withdraw()` function will get back the DVT tokens by burning accounting tokens.
+- Finally, the borrowed amount is subsequently returned to the lending pool from which the flash loan was originally obtained, as part of the process used to initiate the attack.
+
+Here are attacker commands:
 
 ```js
 const AttackFactory = await ethers.getContractFactory('AttackTheRewarder', deployer);
 attack = await AttackFactory.deploy(rewarderPool.address,rewardToken.address,flashLoanPool.address,liquidityToken.address);
-await ethers.provider.send("evm_increaseTime", [5 * 24 * 60 * 60]); // 5 days
+await ethers.provider.send("evm_increaseTime", [5 * 24 * 60 * 60]); // Simulate attacker waiting 5 days for the next distribution
 await attack.connect(player).attack(TOKENS_IN_LENDER_POOL);
 ```
-Failed.
+
+Failed. I would really appreciate if you let me know how to solve this problem. Thanks.
 
 <p align="center"><img width="250" src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/fb8a0bfb-71fe-4d84-847b-8d4e060aed43"></p>
 
