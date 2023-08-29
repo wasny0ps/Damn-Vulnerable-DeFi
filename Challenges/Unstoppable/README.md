@@ -199,7 +199,7 @@ This is a smart contract called `ReceiverUnstoppable` that is designed to receiv
 
 The contract imports the **IERC3156FlashBorrower** interface from the OpenZeppelin library, which allows it to interact with the flash loan functionality. Also it imports the Owned contract from the solmate library, which provides ownership functionality.
 
-And, the contract has a constructor function that takes the address of the UnstoppableVault contract as a parameter and sets it as an immutable variable.
+And, the contract has a constructor function that takes the address of the `UnstoppableVault` contract as a parameter and sets it as an immutable variable.
 
 
 `onFlashLoan()` : This function from the IERC3156FlashBorrower interface. It is called by the UnstoppableVault contract when a flash loan is initiated. It checks that the initiator is the contract itself, the sender is the UnstoppableVault contract, the token is the same as the asset of the UnstoppableVault contract, and the fee is 0. If any of these conditions are not met, it reverts the transaction.
