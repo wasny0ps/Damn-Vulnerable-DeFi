@@ -67,7 +67,7 @@ The contract defines three roles:
 
 `snapshot()` : This function can be called by addresses with the **SNAPSHOT_ROLE** to create a snapshot of token balances at the current block timestamp. It returns the snapshot id.
 
-The `_transfer()` and `_approve()` functions are internal functions that are overridden from the ERC20 contract. In this contract, they are set to revert with a "NotImplemented" error, indicating that token transfers and approvals are not implemented in this contract.
+The `_transfer()` and `_approve()` functions are internal functions that are overridden from the ERC20 contract. In this contract, they are set to revert with a **NotImplemented** error, indicating that token transfers and approvals are not implemented in this contract.
 
 
 
@@ -121,9 +121,9 @@ contract FlashLoanerPool is ReentrancyGuard {
 }
 ```
 
-The FlashLoanerPool contract is a simple pool that allows users to get flash loans of the DamnValuableToken (DVT) token.
+The `FlashLoanerPool` contract is a simple pool that allows users to get flash loans of the DamnValuableToken (DVT) token.
 
-The contract constructor takes the address of the DamnValuableToken contract as a parameter and initializes the "liquidityToken" variable with an instance of the DamnValuableToken contract.
+The contract constructor takes the address of the DamnValuableToken contract as a parameter and initializes the `liquidityToken` variable with an instance of the `DamnValuableToken` contract.
 
 `flashLoan()` : It allows users to request a flash loan of a specified amount of DVT tokens. 
 
@@ -305,13 +305,71 @@ By the way, rumours say a new pool has just launched. Isn’t it offering flash 
 
 # Subverting
 
+First of all, I found 3 main vulnerabilities in this challenge. Let's break it down step by step.
+
+Firstly, the reward calculation method in use here **doesn't take into account the length of time tokens have been staked within the pool. Instead, it solely relies on the total deposits within the pool at the specific instance when the distribution occurs**. Here is the vulnerable code:
+
 ```solidity
 rewards = amountDeposited.mulDiv(REWARDS, totalDeposits);
 ```
 
-The reward calculation method in use here doesn't take into account the length of time tokens have been staked within the pool. Instead, it solely relies on the total deposits within the pool at the specific instance when the distribution occurs.
+Secondly, the reward claiming time limit is incorrectly configured. There is any preservation check for the first rewarder. Here is the unsafe functions:
 
-This creates an opportunity for manipulation. Imagine depositing a substantial flash loan precisely at the onset of a new reward round (e.g., precisely 5 days after the previous round). In this scenario, despite having staked your tokens for just one transaction, we could potentially exploit this system to receive a disproportionately substantial share of rewards. Here is an example attack contract:
+```solidity
+function distributeRewards() public returns (uint256 rewards) {
+        if (isNewRewardsRound()) {
+            _recordSnapshot();
+        }
+
+        uint256 totalDeposits = accountingToken.totalSupplyAt(lastSnapshotIdForRewards);
+        uint256 amountDeposited = accountingToken.balanceOfAt(msg.sender, lastSnapshotIdForRewards);
+
+        if (amountDeposited > 0 && totalDeposits > 0) {
+            rewards = amountDeposited.mulDiv(REWARDS, totalDeposits);
+            if (rewards > 0 && !_hasRetrievedReward(msg.sender)) {
+                rewardToken.mint(msg.sender, rewards);
+                lastRewardTimestamps[msg.sender] = uint64(block.timestamp);
+            }
+        }
+    }
+
+function _hasRetrievedReward(address account) private view returns (bool) {
+        return (
+            lastRewardTimestamps[account] >= lastRecordedSnapshotTimestamp
+                && lastRewardTimestamps[account] <= lastRecordedSnapshotTimestamp + REWARDS_ROUND_MIN_DURATION
+        );
+    }
+
+```
+
+This creates an opportunity for manipulation. Imagine depositing a substantial flash loan precisely at the onset of a new reward round (e.g., precisely 5 days after the previous round). In this scenario, despite having staked your tokens for just one transaction, we could potentially exploit this system to receive a disproportionately substantial share of rewards thanks to this `functionCall()` method in the `FlashLoanerPool` contract:
+
+```solidity
+function flashLoan(uint256 amount) external nonReentrant {
+        uint256 balanceBefore = liquidityToken.balanceOf(address(this));
+
+        if (amount > balanceBefore) {
+            revert NotEnoughTokenBalance();
+        }
+
+        if (!msg.sender.isContract()) {
+            revert CallerIsNotContract();
+        }
+
+        liquidityToken.transfer(msg.sender, amount);
+
+        msg.sender.functionCall(abi.encodeWithSignature("receiveFlashLoan(uint256)", amount));
+
+        if (liquidityToken.balanceOf(address(this)) < balanceBefore) {
+            revert FlashLoanNotPaidBack();
+        }
+    }
+```
+
+
+
+
+Here is an example attack contract:
 
 ```solidity
 pragma solidity ^0.8.0;
@@ -362,13 +420,13 @@ contract AttackTheRewarder{
 
 }
 ```
-In summary, this contract gets instances of contracts in the constructor. After then, here is process tree will look like:
+In summary, this contract gets instances of contracts in the constructor. After that, here is process tree will look like:
 
-- In the `attack()` function, we will call `flashLoan()` function take a loan for the maximum DVT tokens in the pool.
-- The process will be directed to our custom function, `receiveFlashLoan()`, which will handle the tokens obtained from the loan.
-- Then, we will initiate the deposit process by calling the `rewarderPool.deposit()` function, transferring our DVT tokens into the pool. In return, we will receive accounting tokens, which represent our share in the rewards. The `deposit()` function within `TheRewarderPool` contract will, in turn, trigger the execution of the `distributeRewards()` function. It's crucial to note that, at this stage, we should ensure that we are the sole participants in depositing into the pool to maximize our reward.
+- In the `attack()` function, we will call `flashLoan()` function take a loan for the **maximum DVT tokens** in the pool.
+- **The process will be directed to our custom function**, `receiveFlashLoan()`, which will handle the tokens obtained from the loan.
+- Then, we will initiate the deposit process by calling the `rewarderPool.deposit()` function, **transferring our DVT tokens into the pool**. In return, we will receive accounting tokens, which represent our share in the rewards. The `deposit()` function within the `TheRewarderPool` contract will, in turn, trigger the execution of the `distributeRewards()` function. It's crucial to note that, at this stage, we should ensure that we are the sole participants in depositing into the pool to maximize our reward.
 
-To achieve this, we must confirm that a new round has started, meaning that a minimum of 5 days has elapsed since the last round. In our testing environment, we will manipulate time using `evm_increaseTime` to simulate the passage of time and trigger the start of a new round. Next:
+To achieve this, we must confirm that a new round has started, meaning that a **minimum of 5 days has elapsed since the last round**. In our testing environment, we will manipulate time using `evm_increaseTime` to simulate the passage of time and trigger the start of a new round. Next:
 
 - After successfully minting the rewards within our contract, the next step involves transferring these rewards to the attacker's designated address.
 - Later, the `withdraw()` function will get back the DVT tokens by burning accounting tokens.
