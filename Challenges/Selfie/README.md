@@ -297,7 +297,7 @@ modifier onlyGovernance() {
 
 In this case, our aim should be able to call `SelfiePool.emergencyExit()` to be able to bribe all the funds.
 
-To achieve this, it's essential that the contract sender matches the governance address, and it's crucial to note that the governance address can only be set during the contract's initialization in its constructor, and there's no provision for altering it thereafter.
+To achieve this, it's essential that the contract sender matches the governance address, and it's crucial to note that **the governance address can only be set during the contract's initialization in its constructor, and there's no provision for altering it thereafter**.
 
 The exclusive method to trigger the `emergencyExit()` function is by having the governance contract itself initiate the call to the function.
 
@@ -363,7 +363,7 @@ if (_receiver.onFlashLoan(msg.sender, _token, _amount, 0, _data) != CALLBACK_SUC
 ```
 
 
-Here is the attacker commands:
+Here are the attacker commands:
 
 ```js
 const AttackFactory = await ethers.getContractFactory('AttackSelfie', deployer);
