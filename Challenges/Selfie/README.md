@@ -277,6 +277,34 @@ You start with no DVT tokens in balance, and the pool has 1.5 million. Your goal
 
 # Subverting
 
+In this challenge, the desired thing is take all balance from the pool contract. Thankfully,  the `emergencyExit()` function's mission is similiar with challenge's goals. It allows transfer all balance only if the caller address is governance contract's address. 
+
+```solidity
+function emergencyExit(address receiver) external onlyGovernance { 
+        uint256 amount = token.balanceOf(address(this));
+        token.transfer(receiver, amount);
+
+        emit FundsDrained(receiver, amount);
+}
+```
+
+```solidity
+modifier onlyGovernance() {
+    require(msg.sender == address(governance), "Only governance can execute this action");
+    _;
+}
+```
+
+In this case, our aim should be able to call `SelfiePool.emergencyExit()` to be able to bribe all the funds.
+
+To achieve this, it's essential that the contract sender matches the governance address, and it's crucial to note that the governance address can only be set during the contract's initialization in its constructor, and there's no provision for altering it thereafter.
+
+The exclusive method to trigger the `emergencyExit()` function is by having the governance contract itself initiate the call to the function.
+
+While we may not possess direct control over the governance, our avenue to influence lies in **crafting a proposal that can prompt the governance to execute the** `SelfiePool.emergencyExit()` **function**. **The pivotal condition here is amassing sufficient votes to satisfy the queueAction prerequisites**.
+
+We can obtain them directly from the identical lending pool we intend to deplete in the following block. Here is the malicious contract:
+
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -326,6 +354,17 @@ contract AttackSelfie {
 
 ```
 
+In the first step of hacking plan is **taking a snapshot to determine the 50% threshold** in the `attack()` function. Secondly, we will call `flashLoan()` for acquire over 50% of the governance token as of the last snapshot. This allows us to queue a proposal. 
+
+When we complete these two steps, the `SelfiePool` contract will trigger the `onFlashLoan()` function in our attack contract. In that time, we will have **taken a snapshot again where we have more than 50% of the governance token**. Then, we will call `queueAction()` to add action with encoded data. **This data parameter will be executed directly from the** `SimpleGovernance` **contract when we call the** `executeAction()` **function**. Thus, it will call `emergencyExit()` with our attacker address. At the end of the process, **the governance contract transfers all balance to us**. Finally, it will return `keccak256("ERC3156FlashBorrower.onFlashLoan")` for pass this condition:
+
+```solidity
+if (_receiver.onFlashLoan(msg.sender, _token, _amount, 0, _data) != CALLBACK_SUCCESS)
+```
+
+
+Here is the attacker commands:
+
 ```js
 const AttackFactory = await ethers.getContractFactory('AttackSelfie', deployer);
 attack = await AttackFactory.connect(player).deploy(token.address, governance.address, pool.address);
@@ -333,6 +372,8 @@ await attack.attack();
 await ethers.provider.send('evm_increaseTime', [2 * 24 * 60 * 60]); // 2 days
 await governance.executeAction(await attack.id());
 ```
+
+Solve the challenge.
 
 ```powershell
 [Challenge] Selfie
