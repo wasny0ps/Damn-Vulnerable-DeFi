@@ -264,13 +264,20 @@ Starting with just 0.1 ETH in balance, pass the challenge by obtaining all ETH a
 
 # Subverting
 
-When we decode this values from hex and base64 form in the cyberchef tool, we can get keys.
+When we decode this values from the request in the **cyberchef** tool, we can get oracle's wallets private keys.
 
 ![image](https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/e28d2a4f-c900-4465-9b58-87d0bac4f67d)
 
 
 
 ![image](https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/afdf0559-ea1f-483a-a3c8-eb301acc6863)
+
+We can confirm that these private keys grant access to the oracle's trusted accounts. The vulnerability lies in the potential misuse of these keys to sign transactions, enabling price manipulation within the oracle. This manipulation could be exploited for profit by executing buy-low, sell-high strategies to deplete the exchange's resources.
+
+
+
+
+
 
 Here are the attacker commands:
 
@@ -308,5 +315,14 @@ Solve the challenge.
 
 Done in 3.58s.
 ```
+
+
+## Security Takeaways
+
+- Apply the same security precautions to Web2 services as you would to Web3.
+- Distribute private keys across multiple server locations rather than centralizing them all in one place.
+- Refrain from storing private keys linked to services that can be accessed via the public internet.
+
+**_by wasny0ps_**
 
 **_by wasny0ps_**
