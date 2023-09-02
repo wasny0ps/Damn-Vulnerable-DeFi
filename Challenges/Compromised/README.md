@@ -266,17 +266,51 @@ Starting with just 0.1 ETH in balance, pass the challenge by obtaining all ETH a
 
 Before read this part, I would really recomend check [**this article**](https://ethereum.org/en/developers/docs/oracles/) if you don't know what is the oracles in the blockchain.
 
-Oracle manipulation attacks exploit vulnerabilities within an oracle system's structure, typically aiming to coerce the oracle into providing inaccurate information. The primary objective of such an attack is to compel the oracle to deliver false data, ultimately leading to erroneous executions within a smart contract reliant on data from the compromised oracle.
+Oracle manipulation attacks exploit vulnerabilities within an oracle system's structure, typically aiming to coerce the oracle into providing inaccurate information. The primary objective of such an attack is to compel the oracle to deliver **false data**, ultimately leading to erroneous executions within a smart contract reliant on data from the compromised oracle. In this challenge, we will focus on **data sources**. 
+
+Attackers frequently focus on the data source in oracle manipulation attacks because the quality of information provided by the oracle hinges on it. A classic illustration of such attacks is `spot price manipulation`.
+
+A lending protocol that employs overcollateralization relies on the real-time spot price of an asset, sourced from a decentralized exchange such as Uniswap, to assess the worth of a user's collateral. **This methodology plays a crucial role in establishing the user's borrowing capacity and in monitoring when their debt position approaches an undercollateralized state**.
 
 
-In this challenge, we will focus on data sources. Attackers frequently focus on the data source in oracle manipulation attacks because the quality of information provided by the oracle hinges on it. A classic illustration of such attacks is `spot price manipulation`.
-
-A lending protocol that employs overcollateralization relies on the real-time spot price of an asset, sourced from a decentralized exchange such as Uniswap, to assess the worth of a user's collateral. This methodology plays a crucial role in establishing the user's borrowing capacity and in monitoring when their debt position approaches an undercollateralized state.
-
-
-An attacker can manipulate token prices on a specific market using flash loans to generate fake demand, consequently causing the decentralized exchange (DEX), which serves as a price oracle, to register unusually high prices for the token. This deceptive pricing information can then lead the lending protocol to inaccurately assess the value of collateral provided by users, resulting in the issuance of "bad loans." Here is the example attack looks like:
+**An attacker can manipulate token prices on a specific market using flash loans to generate fake demand, consequently causing the decentralized exchange (DEX), which serves as a price oracle, to register unusually high prices for the token**. This deceptive pricing information can then lead the lending protocol to inaccurately assess the value of collateral provided by users, resulting in the issuance of **bad loans**. Here is the example attack looks like:
 
 <p align="center"><img height="350" src="https://redefine.net/img/media/oracle-post/oracle-manipulation.png"></p>
+
+## Effects Of Oracle Manipulation
+
+### Protocol Insolvency
+
+
+Manipulating oracles poses a significant challenge for lending protocols, as it has the potential to trigger widespread insolvency. To illustrate, an oracle exploit could cause the protocol to **generate instances of bad debt, wherein the value of the collateral falls below the amount of debt owed by users**. **In such a scenario, liquidity providers would bear the brunt of losses, as borrowers would lack motivation to repay their debts**.
+
+### Poor User Experience
+
+
+DeFi money markets prevent insolvency by constantly **monitoring the market value of collateral assets and initiating debt position liquidations in advance to prevent undercollateralization**. However, such liquidations could be unjustified if the protocol relies on inaccurate oracle data for its calculations.
+
+
+
+### Economic Failure
+
+Oracle exploits can have far-reaching consequences beyond protocol insolvency, as evidenced by scenarios where algorithmic stablecoins and rebase tokens risk losing their price stability due to erroneous price data provided by oracles.
+
+
+## Prevention Of Oracle Manipulation Attacks
+
+### Understand Oracle Design Patterns
+
+Understanding oracle design patterns is crucial for safeguarding against price oracle manipulation attacks in the realm of DeFi. These attacks often exploit vulnerabilities **in the oracle's data sources or aggregation methods to manipulate price feeds and deceive smart contracts into executing malicious transactions**. 
+
+By comprehending these design patterns, DeFi projects can implement preventive measures such as **utilizing multiple**, **reputable data sources**, **employing robust consensus mechanisms**, and regularly auditing their oracle infrastructure. This proactive approach not only enhances the security and reliability of price oracles but also fortifies the overall **integrity of the DeFi ecosystem**, making it more resilient against potential exploits and ensuring the trustworthiness of financial transactions executed on blockchain platforms.
+
+### Use Decentralized Oracles
+
+Utilizing decentralized oracles is a proactive approach to thwarting price oracle manipulation attacks.**These decentralized oracles source data from multiple, independent data providers, making it significantly more challenging for any single entity to manipulate the data feed**. 
+
+By relying on a network of validators and consensus mechanisms, **decentralized oracles enhance the security and integrity of price data, reducing the vulnerability of smart contracts and DeFi platforms to fraudulent price manipulation**. This approach not only helps safeguard the integrity of financial systems built on blockchain technology but also reinforces trust in decentralized applications and services across the ecosystem.
+
+If you want more about this topic, you can check [**this article**](https://scsfg.io/hackers/oracle-manipulation/).
 
 # Subverting
 
