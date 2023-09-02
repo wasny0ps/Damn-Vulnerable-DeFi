@@ -266,6 +266,18 @@ Starting with just 0.1 ETH in balance, pass the challenge by obtaining all ETH a
 
 Before read this part, I would really recomend check [**this article**](https://ethereum.org/en/developers/docs/oracles/) if you don't know what is the oracles in the blockchain.
 
+Oracle manipulation attacks exploit vulnerabilities within an oracle system's structure, typically aiming to coerce the oracle into providing inaccurate information. The primary objective of such an attack is to compel the oracle to deliver false data, ultimately leading to erroneous executions within a smart contract reliant on data from the compromised oracle.
+
+
+In this challenge, we will focus on data sources. Attackers frequently focus on the data source in oracle manipulation attacks because the quality of information provided by the oracle hinges on it. A classic illustration of such attacks is `spot price manipulation`.
+
+A lending protocol that employs overcollateralization relies on the real-time spot price of an asset, sourced from a decentralized exchange such as Uniswap, to assess the worth of a user's collateral. This methodology plays a crucial role in establishing the user's borrowing capacity and in monitoring when their debt position approaches an undercollateralized state.
+
+
+An attacker can manipulate token prices on a specific market using flash loans to generate fake demand, consequently causing the decentralized exchange (DEX), which serves as a price oracle, to register unusually high prices for the token. This deceptive pricing information can then lead the lending protocol to inaccurately assess the value of collateral provided by users, resulting in the issuance of "bad loans." Here is the example attack looks like:
+
+<p align="center"><img height="350" src="https://redefine.net/img/media/oracle-post/oracle-manipulation.png"></p>
+
 # Subverting
 
 When we decode this values from the request in the **cyberchef** tool, we can get oracle's wallets private keys.
