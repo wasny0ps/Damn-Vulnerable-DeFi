@@ -95,3 +95,10 @@ Pass the challenge by taking all tokens from the lending pool. You start with 25
 # Subverting
 
 
+
+In the uniswap v1's whitepaper, it says:
+
+> The functions `ethToTokenSwap()`, `tokenToEthSwap()` , and `tokenToTokenSwap()` **return purchased tokens to the buyers address**.
+The functions `ethToTokenTransfer()`, `tokenToEthTransfer()`, and `tokenToTokenTransfer()` **allow buyers to make a trade and then immediately transfer purchased tokens to a recipient address**.
+
+
