@@ -6,7 +6,7 @@ Given contract.
 
 **PuppetV2Pool.sol**
 
-```soliditiy
+```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
@@ -96,7 +96,7 @@ You start with 20 ETH and 10000 DVT tokens in balance. The pool has a million DV
 
 # Subverting
 
-```solidty
+```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
