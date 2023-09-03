@@ -6,7 +6,7 @@ Given contract.
 
 **PuppetV2Pool.sol**
 
-```solidity
+```soliditiy
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
