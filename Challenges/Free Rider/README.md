@@ -122,13 +122,13 @@ The `FreeRiderNFTMarketplace` contract is a marketplace for buying and selling N
 
 The constructor of the contract takes an amount parameter and mints amount number of DamnValuableNFT tokens. The tokens are minted and transferred to the contract deployer.
 
-`offerMany()` : Allows users to offer multiple NFTs for sale at once. Users provide an array of tokenIds and an array of corresponding prices. The function checks for invalid input and stores the offers in the `offers` mapping. It emits the `NFTOffered` event for each offer made.
+`offerMany()`: Allows users to offer multiple NFTs for sale at once. Users provide an array of tokenIds and an array of corresponding prices. The function checks for invalid input and stores the offers in the `offers` mapping. It emits the `NFTOffered` event for each offer made.
 
-`_offerOne()` : Handles the logic of offering a single NFT for sale. It checks if the price is valid, if the caller is the owner of the NFT, and if the contract is approved to transfer the NFT. It then stores the offer in the `offers` mapping and increments the `offersCount` variable.
+`_offerOne()`: Handles the logic of offering a single NFT for sale. It checks if the price is valid, if the caller is the owner of the NFT, and if the contract is approved to transfer the NFT. It then stores the offer in the `offers` mapping and increments the `offersCount` variable.
 
-`buyMany()` : Allows users to buy multiple NFTs at once. Users provide an array of tokenIds they want to buy. The function checks if the NFTs have been offered for sale, if the payment made by the buyer is sufficient, and then transfers the NFTs to the buyer and sends the payment to the seller. It emits the `NFTBought` event for each NFT bought.
+`buyMany()`: Allows users to buy multiple NFTs at once. Users provide an array of tokenIds they want to buy. The function checks if the NFTs have been offered for sale, if the payment made by the buyer is sufficient, and then transfers the NFTs to the buyer and sends the payment to the seller. It emits the `NFTBought` event for each NFT bought.
 
-`_buyOne()` : Handles the logic of buying a single NFT. It checks if the NFT has been offered for sale, if the payment made by the buyer is sufficient, transfers the NFT to the buyer, and sends the payment to the seller.
+`_buyOne()`: Handles the logic of buying a single NFT. It checks if the NFT has been offered for sale, if the payment made by the buyer is sufficient, transfers the NFT to the buyer, and sends the payment to the seller.
 
 **FreeRiderRecovery.sol**
 
@@ -198,7 +198,7 @@ contract FreeRiderRecovery is ReentrancyGuard, IERC721Receiver {
 
 The FreeRiderRecovery contract is designed to recover funds from free riders who have not paid the required amount to participate in a game.
 
-`onERC721Received()` : This function is a callback function that is called when the contract receives an ERC721 token. It verifies that the caller is the NFT token contract, the origin of the transaction is the beneficiary, the token ID is valid, and the contract is the owner of the token. If the contract has received all the required tokens (6 tokens), it transfers the prize amount to the recipient address specified in the `_data` parameter.
+`onERC721Received()`: This function is a callback function that is called when the contract receives an ERC721 token. It verifies that the caller is the NFT token contract, the origin of the transaction is the beneficiary, the token ID is valid, and the contract is the owner of the token. If the contract has received all the required tokens (6 tokens), it transfers the prize amount to the recipient address specified in the `_data` parameter.
 
 Challenge's message:
 
@@ -206,6 +206,25 @@ Challenge's message:
 The developers behind it have been notified the marketplace is vulnerable. All tokens can be taken. Yet they have absolutely no idea how to do it. So they’re offering a bounty of 45 ETH for whoever is willing to take the NFTs out and send them their way.
 You’ve agreed to help. Although, you only have 0.1 ETH in balance. The devs just won’t reply to your messages asking for more.
 If only you could get free ETH, at least for an instant.
+
+## Flash Swaps
+
+<p align="center"><img width="600" src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/0741286e-967e-429a-939f-95d87e0f795c"></p>
+
+
+
+Flash swaps are a concept primarily associated with decentralized finance platforms built on blockchain technology, particularly Ethereum. They are a specialized form of smart contract interaction that allows users to borrow and repay assets within a single transaction without requiring collateral, as is typical in many other DeFi lending protocols.
+
+Here's how flash swaps generally work:
+
+- `Initialization:` A user initiates a flash swap by sending a single transaction to a smart contract on a DeFi platform that supports flash swaps. In this transaction, the user specifies the asset they want to borrow and a callback function.
+- `Borrow & Callback:` The smart contract checks whether there are sufficient funds available to perform the flash swap. If there are, it temporarily lends the requested asset to the user, who can use it for any purpose during the same transaction. The user's callback function is executed within the same transaction, allowing them to perform actions with the borrowed assets.
+- `Repayment:` After using the borrowed assets, the user must repay the same amount of assets back to the smart contract within the same transaction. If the user fails to repay, the transaction is typically reverted, and no flash swap occurs.
+- `Profit & Fees:` Users often use flash swaps to take advantage of arbitrage opportunities, market inefficiencies, or to perform complex trading strategies without tying up their own capital. They can profit from price differences between assets or take advantage of other DeFi protocols.
+- `Atomicity:` Flash swaps are atomic transactions, meaning they either execute completely or not at all. If the user fails to repay the borrowed assets within the same transaction, the entire transaction is reverted, ensuring that the liquidity pool is not left exposed to the risk of default.
+
+Flash swaps have gained popularity in the DeFi space because they enable traders to access significant amounts of liquidity without the need for collateral. However, they also come with risks, including the potential for price manipulation and vulnerabilities in the smart contracts used to facilitate flash swaps. Additionally, the fast-paced and complex nature of flash swaps makes them a tool for experienced traders and developers in the DeFi ecosystem.
+
 
 
 # Subverting
@@ -304,14 +323,14 @@ weth.withdraw(_amount);
 marketplace.buyMany{value: _amount}(tokenIds);
 ```
 
-`Computing fee :` Uniswap charges 0.3% for any form of swap. Using the following code, we are computing the fee that our contract will have to bear for undertaking the flashswap.
+`Computing fee:` Uniswap charges 0.3% for any form of swap. Using the following code, we are computing the fee that our contract will have to bear for undertaking the flashswap.
 
 ```solidity
 uint fee = ((_amount * 3) / 997) + 1;
 uint amountToRepay = _amount + fee;
 ```
 
-`Repayment :` We have to pay Uniswap the borrowed token including the fee. So, we will pay back the flash swap by using the following code.
+`Repayment:` We have to pay Uniswap the borrowed token including the fee. So, we will pay back the flash swap by using the following code.
 
 
 ```solidity
