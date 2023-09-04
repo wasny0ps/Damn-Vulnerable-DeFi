@@ -229,6 +229,14 @@ Flash swaps have gained popularity in the DeFi space because they enable traders
 
 # Subverting
 
+In the `buyMany()` function enables bulk purchasing of NFTs, verifying only if `msg.value` is equal to or greater than the price of each individual item, without considering the total price that the buyer must pay to acquire all the NFTs.
+
+Let's consider that: There are three NFTs we want to purchase. And orderly, the prices are 1 ETH, 3 ETH 5 ETH. Normally, **we should pay 9 ETH for this three tokens**. But without this check we just have to call the function just paying the cost of the most expensive NFT like this: `buyMany{value: 5 ether}([token1, token2, token3])`
+
+However, we only have 0.5 ETH in our wallet, and we need to pay for the gas. To solve this problem, will use **Uniswap V2 exchange for WETH/DVT**.
+
+UniswapV2 exchanges offer a mechanism called **Flash Swaps**. Basically, it allows us to take a flashloan that must be repaid with a 0.3% fee on the amount we got loaned for the transaction. Let's apply these plans in the attack code:
+
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
