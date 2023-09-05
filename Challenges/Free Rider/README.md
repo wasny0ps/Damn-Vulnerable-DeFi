@@ -213,7 +213,7 @@ If only you could get free ETH, at least for an instant.
 
 
 
-Flash swaps are a concept primarily associated with decentralized finance platforms built on blockchain technology, particularly Ethereum. They are a specialized form of smart contract interaction that allows users to borrow and repay assets within a single transaction without requiring collateral, as is typical in many other DeFi lending protocols.
+Flash swaps are a concept primarily associated with decentralized finance platforms built on blockchain technology, particularly Ethereum. They are a specialized form of smart contract interaction that **allows users to borrow and repay assets within a single transaction without requiring collateral**, as is typical in many other DeFi lending protocols.
 
 Here's how flash swaps generally work:
 
@@ -225,17 +225,17 @@ Here's how flash swaps generally work:
 
 Flash swaps have gained popularity in the DeFi space because they enable traders to access significant amounts of liquidity without the need for collateral. However, they also come with risks, including the potential for price manipulation and vulnerabilities in the smart contracts used to facilitate flash swaps. Additionally, the fast-paced and complex nature of flash swaps makes them a tool for experienced traders and developers in the DeFi ecosystem.
 
-
+More information flash swaps, please visit [Uniswap V2 documentation](https://docs.uniswap.org/contracts/v2/guides/smart-contract-integration/using-flash-swaps).
 
 # Subverting
 
 In the `buyMany()` function enables bulk purchasing of NFTs, verifying only if `msg.value` is equal to or greater than the price of each individual item, without considering the total price that the buyer must pay to acquire all the NFTs.
 
-Let's consider that: There are three NFTs we want to purchase. And orderly, the prices are 1 ETH, 3 ETH 5 ETH. Normally, **we should pay 9 ETH for this three tokens**. But without this check we just have to call the function just paying the cost of the most expensive NFT like this: `buyMany{value: 5 ether}([token1, token2, token3])`
+Let's consider that: There are three NFTs we want to purchase. And orderly, the prices are 1 ETH, 3 ETH 5 ETH. Normally, **we should pay 9 ETH for this three tokens**. But without this check we just have to call the function **just paying the cost of the most expensive NFT** like this: `buyMany{value: 5 ether}([token1, token2, token3])`
 
 However, we only have 0.5 ETH in our wallet, and we need to pay for the gas. To solve this problem, will use **Uniswap V2 exchange for WETH/DVT**.
 
-UniswapV2 exchanges offer a mechanism called **Flash Swaps**. Basically, it allows us to take a flashloan that must be repaid with a 0.3% fee on the amount we got loaned for the transaction. Let's apply these plans in the attack code:
+UniswapV2 exchanges offer a mechanism called **Flash Swaps**. Basically, **it allows us to take a flashloan that must be repaid with a 0.3% fee on the amount we got loaned for the transaction**. Let's apply these plans in the attack code:
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -316,7 +316,7 @@ Get the instances of contracts in the constructor.
 }
 ```
 
-In the `attack()` function, we will do flash swap to get WETH. Therefore, we must send at least 0.045135406218655967 ETH to pay the fee for the 15 WETH flash swap.
+In the `attack()` function, we will do flash swap to get WETH. Therefore, we must send at least 0.045135406218655967 ETH to **pay the fee for the 15 WETH flash swap**.
 
 ```solidity
 function attack()external payable{
