@@ -372,11 +372,13 @@ Users sometimes interact with these similar networks, transferring assets or tok
 
 The `Initializable` contract is a utility contract provided by the OpenZeppelin library that **helps in initializing contract state variables**. It is often used in upgradeable contracts where the state variables need to be initialized during the deployment of a new version of the contract.
 
-In this challenge, the `WalletDeployer` contract come accross `AuthorizerUpgradeable` contract with UUPS Proxy contract.
+One of the key benefits of using proxy contracts is that the storage data (state variables) is **preserved across upgrades**. **When you upgrade the implementation contract, the proxy contract still holds the same storage data. This is because the storage data is tied to the address of the proxy contract, which remains unchanged**.
 
-One of the key benefits of using proxy contracts is that the storage data (state variables) is preserved across upgrades. When you upgrade the implementation contract, the proxy contract still holds the same storage data. This is because the storage data is tied to the address of the proxy contract, which remains unchanged.
+In this challenge, the `WalletDeployer` contract comes across the `AuthorizerUpgradeable` contract with the UUPS Proxy contract. In the same transaction where you upgrade the implementation contract, you also call a specific function on the new implementation. This function is often referred to as `upgradeAndCall()` because it combines the upgrade and the execution of a specific action.
 
 <p align="center"><img src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/2c872350-aed7-4fd7-8d17-4d96ca25e082"></p>
+
+
 
 
 
@@ -560,7 +562,10 @@ function _upgradeToAndCallUUPS(
 
 <p align="center"><img src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/f1d4e6d8-f0ef-4698-94fe-a0771d7b3dca"></p>
 
-When we can call the `upgradeToAndCall()` function, it will delegatecall `attack()` attacking contract. Then, it will execute `selfdestruct()`
+We mentioned upgreable proxy contract process. **So, because of the immutable contract in Ethereum, there is only way to change walletdeployer's storage to selfdestruct them**. When we can call the `upgradeToAndCall()` function, it will delegatecall `attack()` attacking contract. Then, it will execute `selfdestruct()` the contract.
+
+
+Finally, we have a `can()` function will help us to setting authorize account. 
 
 Here are the attacker commands:
 
