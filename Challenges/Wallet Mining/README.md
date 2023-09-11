@@ -378,9 +378,7 @@ In this challenge, the `WalletDeployer` contract comes across the `AuthorizerUpg
 
 <p align="center"><img src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/2c872350-aed7-4fd7-8d17-4d96ca25e082"></p>
 
-
-
-
+This kind of implementation may be vulnerable because we can call the upgradeAndCall() function without any onlyOwner modifier's revert after creating an initialized attack proxy.
 
 # Subverting
 
@@ -396,9 +394,9 @@ When we see the master copy contract in the etherscan, we find the version of th
 
 <p align="center"><img width="600" src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/b9f6a278-6c96-448e-a76f-16ad83044b1c"></p>
 
-We can get raw transaction hex from [etherscan](https://etherscan.io/getRawTx?tx=0x06d2fa464546e99d2147e1fc997ddb624cec9c8c5e25a050cc381ee8a384eed3) this creation. In this case, we can **replay safe deploy transaction with this hex**!
+We can get raw transaction hex from [etherscan](https://etherscan.io/getRawTx?tx=0x06d2fa464546e99d2147e1fc997ddb624cec9c8c5e25a050cc381ee8a384eed3) this creation. In this case, we can **replay safe deploy transaction in the mainnet with this raw hex**!
 
-Same process for the safe factory's creation. You can get this transaction raw hex form from [here](https://etherscan.io/getRawTx?tx=0x75a42f240d229518979199f56cd7c82e4fc1f1a20ad9a4864c635354b4a34261). Also, get the [deployer address](https://etherscan.io/address/0x1aa7451DD11b8cb16AC089ED7fE05eFa00100A6A) of this contract. All these data pass to a JSON file.
+Same process for the safe factory's creation. You can get this transaction raw hex form from [here](https://etherscan.io/getRawTx?tx=0x75a42f240d229518979199f56cd7c82e4fc1f1a20ad9a4864c635354b4a34261). Also, get the [deployer address](https://etherscan.io/address/0x1aa7451DD11b8cb16AC089ED7fE05eFa00100A6A) of this contract. All these data pass to a [JSON file](https://github.com/wasny0ps/Damn-Vulnerable-DeFi/blob/main/Challenges/Wallet%20Mining/data.json).
 
 
 When we analyze v1.1.1 version GnosisSafe contract, there is two helpful function for us. 
@@ -462,7 +460,7 @@ When we analyze v1.1.1 version GnosisSafe contract, there is two helpful functio
     }
 ```
 
-With `execTransaction()`, we can **execute the code which transfers all tokens to our address**.
+With `execTransaction()`, we can execute commans. Sure, we will **execute the code which transfers all tokens to our address**.
 
 ```solidity
 /// @dev Returns hash to be signed by owners.
@@ -530,7 +528,7 @@ contract AttackWalletMining{
 }
 ```
 
-We have `proxiableUUID()` function returns implementaion slot's value to `IERC1822ProxiableUpgradeable(newImplementation).proxiableUUID()` request from the `_upgradeToAndCallUUPS()`.
+We have `proxiableUUID()` function returns implementaion slot's value to `IERC1822ProxiableUpgradeable(newImplementation).proxiableUUID()` request for pass the requirement from the `_upgradeToAndCallUUPS()`.
 
 ```solidity
 bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
@@ -564,9 +562,7 @@ To drop all balance, we must be authorized. In this challenge, the authorize mec
 <p align="center"><img src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/f1d4e6d8-f0ef-4698-94fe-a0771d7b3dca"></p>
 
 
-Finally, we have a `can()` function will help us to setting authorize account. 
-
-Here are the attacker commands:
+Finally, we have a `can()` function written in the inline assembly that will help us with gas optimization. Here are the attacker commands:
 
 ```js
 const data = require("./data.json");
