@@ -372,6 +372,12 @@ Users sometimes interact with these similar networks, transferring assets or tok
 
 The `Initializable` contract is a utility contract provided by the OpenZeppelin library that **helps in initializing contract state variables**. It is often used in upgradeable contracts where the state variables need to be initialized during the deployment of a new version of the contract.
 
+In this challenge, the `WalletDeployer` contract come accross `AuthorizerUpgradeable` contract with UUPS Proxy contract.
+
+One of the key benefits of using proxy contracts is that the storage data (state variables) is preserved across upgrades. When you upgrade the implementation contract, the proxy contract still holds the same storage data. This is because the storage data is tied to the address of the proxy contract, which remains unchanged.
+
+<p align="center"><img src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/2c872350-aed7-4fd7-8d17-4d96ca25e082"></p>
+
 
 
 # Subverting
@@ -522,7 +528,11 @@ contract AttackWalletMining{
 }
 ```
 
-We have `proxiableUUID()` function returns implementaion slot `IERC1822ProxiableUpgradeable(newImplementation).proxiableUUID()` request from the `_upgradeToAndCallUUPS()`.
+We have `proxiableUUID()` function returns implementaion slot's value to `IERC1822ProxiableUpgradeable(newImplementation).proxiableUUID()` request from the `_upgradeToAndCallUUPS()`.
+
+```solidity
+bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+```
 
 ```solidity
 function _upgradeToAndCallUUPS(
@@ -545,6 +555,12 @@ function _upgradeToAndCallUUPS(
         }
     }
 ```
+
+
+
+<p align="center"><img src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/f1d4e6d8-f0ef-4698-94fe-a0771d7b3dca"></p>
+
+When we can call the `upgradeToAndCall()` function, it will delegatecall `attack()` attacking contract. Then, it will execute `selfdestruct()`
 
 Here are the attacker commands:
 
@@ -688,3 +704,4 @@ Solve the challenge.
 Done in 5.61s.
 ```
 
+**_by wasny0ps_**
