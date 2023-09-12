@@ -99,7 +99,6 @@ The constructor initializes the contract with the WETH token, borrowed token, an
 Challenge's message:
 
 > Even on a bear market, the devs behind the lending pool kept building.
-
 In the latest version, they’re using Uniswap V3 as an oracle. That’s right, no longer using spot prices! This time the pool queries the time-weighted average price of the asset, with all the recommended libraries.
 The Uniswap market has 100 WETH and 100 DVT in liquidity. The lending pool has a million DVT tokens.
 Starting with 1 ETH and some DVT, pass this challenge by taking all tokens from the lending pool.
