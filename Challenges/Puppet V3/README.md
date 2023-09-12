@@ -107,9 +107,52 @@ NOTE: unlike others, this challenge requires you to set a valid RPC URL in the c
 
 ## TWAP Oracles 
 
-## MMEV Attack
+<p align="center"><img height="400" src="https://docs.uniswap.org/assets/images/v2_twap-fdc82ab82856196510db6b421cce9204.png"></p>
+
+A TWAP (Time-Weighted Average Price) oracle is a specialized type of oracle **designed to supply data regarding an asset's average price throughout a defined time frame**. 
+For instance, if a user configures a 10-day interval for the TWAP oracle, the oracle will provide the average price of the asset over the span of ten consecutive days.
+
+A weighted average involves **multiplying values in a dataset by predefined weights and then summing them up in the calculation**. This method assigns specific importance or significance to different values within the dataset. It is regarded as a more accurate approach compared to **simply adding up all the values and dividing by the total number of values (n) to compute the average**.
+
+TWAP oracles address a specific issue related to on-chain oracles, primarily centered around **price manipulation**. 
+
+> The TWAP oracle is a method that takes duration into account when weighing prices. The price (P) is multiplied by its duration (T) and added to a cumulative value (C) at various checkpoints, typically at the end of a block. Ultimately, the total cumulative value is divided by the total duration to calculate the average price over the specified period.
+
+We use the TWAP mechanism to calculate the average price of ETH over a 150-second interval:
+
+```
+The Formula: P x T = C
+
+// Starting
+// T=0 and P=1000$
+// 1000 x 0 = 0
+// C is 0
+
+
+// After 50 seconds
+// T=50 and P=1000$
+// (50 – 0) x 1000 = 50,000
+// C is increases to 50,000
+
+
+// After 100 seconds
+// T=150 and P=1000$
+// (150 – 50) x 1000 = 100,000
+// C is increases to 100,000
+
+```
+
+Remember that the calculations use the last price of an asset at the previous block instead of the price at the current one. **By using the value of P at the last transaction in a block, TWAP oracles increase the difficulty of successfully executing price manipulation**. 
+
 
 # Subverting
+
+The lending pool contract leverages Uniswap V3's liquidity pool Oracle function, which employs a Time Weighted Average Price (TWAP) methodology for determining the price of DVT in relation to WETH. Unlike traditional methods that rely on the current reserve amounts, TWAP considers historical data spanning a defined time frame, typically 10 minutes in this instance, to compute the average price within that specific duration.
+
+In this challenge, the exploit is simply that the TWAP of 10 minutes is not long enough to mitigate short-term volatility. In the constraints of the solution, we are required to steal all funds from the lending pool in less than 115 seconds which is just under 20% of the TWAP period.
+
+
+
 
 Here are the attacker commands:
 
