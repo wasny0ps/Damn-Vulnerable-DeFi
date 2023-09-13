@@ -147,7 +147,7 @@ Remember that the calculations use the last price of an asset at the previous bl
 
 # Subverting
 
-The lending pool contract leverages Uniswap V3's liquidity pool Oracle function, which employs a TWAP methodology for determining the price of DVT in relation to WETH. Unlike traditional methods that rely on the current reserve amounts, TWAP considers historical data spanning a defined time frame, typically 10 minutes in this instance, to compute the average price within that specific duration.
+The lending pool contract leverages Uniswap V3's liquidity pool Oracle function, which employs a TWAP methodology for determining the price of DVT in relation to WETH. Unlike traditional methods that rely on the current reserve amounts, **TWAP considers historical data spanning a defined time frame, typically 10 minutes in this instance, to compute the average price within that specific duration**.
 
 This challenge involves exploiting the fact that a 10-minute TWAP is not effective in reducing short-term volatility. The task at hand is to take all the funds from the lending pool in less than 115 seconds, which is almost 20% of the TWAP period, as stipulated in the solution's constraints.
 
