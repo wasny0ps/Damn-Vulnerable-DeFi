@@ -2,5 +2,180 @@
 
 # Target Contract Review
 
+Given contracts.
+
+**AuthorizedExecutor.sol**
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+
+/**
+ * @title AuthorizedExecutor
+ * @author Damn Vulnerable DeFi (https://damnvulnerabledefi.xyz)
+ */
+abstract contract AuthorizedExecutor is ReentrancyGuard {
+    using Address for address;
+
+    bool public initialized;
+
+    // action identifier => allowed
+    mapping(bytes32 => bool) public permissions;
+
+    error NotAllowed();
+    error AlreadyInitialized();
+
+    event Initialized(address who, bytes32[] ids);
+
+    /**
+     * @notice Allows first caller to set permissions for a set of action identifiers
+     * @param ids array of action identifiers
+     */
+    function setPermissions(bytes32[] memory ids) external {
+        if (initialized) {
+            revert AlreadyInitialized();
+        }
+
+        for (uint256 i = 0; i < ids.length;) {
+            unchecked {
+                permissions[ids[i]] = true;
+                ++i;
+            }
+        }
+        initialized = true;
+
+        emit Initialized(msg.sender, ids);
+    }
+
+    /**
+     * @notice Performs an arbitrary function call on a target contract, if the caller is authorized to do so.
+     * @param target account where the action will be executed
+     * @param actionData abi-encoded calldata to execute on the target
+     */
+    function execute(address target, bytes calldata actionData) external nonReentrant returns (bytes memory) {
+        // Read the 4-bytes selector at the beginning of `actionData`
+        bytes4 selector;
+        uint256 calldataOffset = 4 + 32 * 3; // calldata position where `actionData` begins
+        assembly {
+            selector := calldataload(calldataOffset)
+        }
+
+        if (!permissions[getActionId(selector, msg.sender, target)]) {
+            revert NotAllowed();
+        }
+
+        _beforeFunctionCall(target, actionData);
+
+        return target.functionCall(actionData);
+    }
+
+    function _beforeFunctionCall(address target, bytes memory actionData) internal virtual;
+
+    function getActionId(bytes4 selector, address executor, address target) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(selector, executor, target));
+    }
+}
+```
+
+The `AuthorizedExecutor` contract is a base contract that allows a caller to execute arbitrary function calls on a target contract, but only if the caller is authorized to do so. It provides a mechanism for managing permissions for different actions.
+
+`setPermissions()` :  Allows the first caller to set permissions for a set of action identifiers. It takes an array of action identifiers as a parameter and sets the corresponding permissions to true. If the contract has already been initialized, calling this function will revert.
+
+`execute()` : Performs an arbitrary function call on a target contract if the caller is authorized to do so. It takes the target contract address and the calldata for the function call as parameters. Before executing the function call, it checks if the caller has the necessary permission for the action. 
+
+`getActionId()` : Generates an action identifier based on the function selector, the executor's address, and the target contract's address. It uses the keccak256 hash function to generate a unique identifier.
+
+**SelfAuthorizedVault.sol**
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "solady/src/utils/SafeTransferLib.sol";
+import "./AuthorizedExecutor.sol";
+
+/**
+ * @title SelfAuthorizedVault
+ * @author Damn Vulnerable DeFi (https://damnvulnerabledefi.xyz)
+ */
+contract SelfAuthorizedVault is AuthorizedExecutor {
+    uint256 public constant WITHDRAWAL_LIMIT = 1 ether;
+    uint256 public constant WAITING_PERIOD = 15 days;
+
+    uint256 private _lastWithdrawalTimestamp = block.timestamp;
+
+    error TargetNotAllowed();
+    error CallerNotAllowed();
+    error InvalidWithdrawalAmount();
+    error WithdrawalWaitingPeriodNotEnded();
+
+    modifier onlyThis() {
+        if (msg.sender != address(this)) {
+            revert CallerNotAllowed();
+        }
+        _;
+    }
+
+    /**
+     * @notice Allows to send a limited amount of tokens to a recipient every now and then
+     * @param token address of the token to withdraw
+     * @param recipient address of the tokens' recipient
+     * @param amount amount of tokens to be transferred
+     */
+    function withdraw(address token, address recipient, uint256 amount) external onlyThis {
+        if (amount > WITHDRAWAL_LIMIT) {
+            revert InvalidWithdrawalAmount();
+        }
+
+        if (block.timestamp <= _lastWithdrawalTimestamp + WAITING_PERIOD) {
+            revert WithdrawalWaitingPeriodNotEnded();
+        }
+
+        _lastWithdrawalTimestamp = block.timestamp;
+
+        SafeTransferLib.safeTransfer(token, recipient, amount);
+    }
+
+    function sweepFunds(address receiver, IERC20 token) external onlyThis {
+        SafeTransferLib.safeTransfer(address(token), receiver, token.balanceOf(address(this)));
+    }
+
+    function getLastWithdrawalTimestamp() external view returns (uint256) {
+        return _lastWithdrawalTimestamp;
+    }
+
+    function _beforeFunctionCall(address target, bytes memory) internal view override {
+        if (target != address(this)) {
+            revert TargetNotAllowed();
+        }
+    }
+}
+```
+
+The `SelfAuthorizedVault` contract is a smart contract that allows for the controlled withdrawal of tokens. It implements a self-authorization mechanism where the contract itself determines when and how much tokens can be withdrawn.
+
+`withdraw()` : Allows the contract to send a limited amount of tokens to a specified recipient. If the withdrawal amount exceeds the withdrawal limit or the waiting period has not ended, the function reverts. Otherwise, the function transfers the specified amount of tokens to the recipient using the `SafeTransferLib` library.
+
+`sweepFunds()` : Allows the contract to sweep all the remaining tokens in the contract to a specified receiver address.
+
+`getLastWithdrawalTimestamp()` : Returns the timestamp of the last withdrawal made.
+
+`_beforeFunctionCall()` : This internal function is part of the `AuthorizedExecutor` contract, which the `SelfAuthorizedVault` contract inherits from. It is used to check if a function call is allowed. In this case, it ensures that the target of the function call is the contract itself (`address(this)`).
+
+Overall, the contract is designed to provide controlled access to the stored tokens, allowing for limited and regulated withdrawals.
+
+
+
+Challenge's message:
+
+> There’s a permissioned vault with 1 million DVT tokens deposited. The vault allows withdrawing funds periodically, as well as taking all funds out in case of emergencies.
+The contract has an embedded generic authorization scheme, only allowing known accounts to execute specific actions.
+The dev team has received a responsible disclosure saying all funds can be stolen.
+Before it’s too late, rescue all funds from the vault, transferring them back to the recovery account.
+
 # Subverting
 
