@@ -176,9 +176,9 @@ gasLimit: 1e7
 );
 ```
 
-We should wait for a little while to give the new price more influence in the calculation. As per the challenge's constraints, we only have 115 seconds, so we can skip ahead 110 seconds, leaving us with enough time to complete any other necessary transactions, such as approvals and swaps. 
+This operation swaps 110 DVT tokens for the maximum amount of WETH possible. We should wait for a little while to give the new price more influence in the calculation. As per the challenge's constraints, we only have 115 seconds, so we can skip ahead 110 seconds, leaving us with enough time to complete any other necessary transactions, such as approvals and swaps. 
 
-Next, we approve that amount to be transferred to the contract and then execute the borrow() function.
+Next, we approve that amount to be transferred to the contract and then execute the `borrow()` function.
 
 ```js
 await time.increase(100);
