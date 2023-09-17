@@ -178,25 +178,57 @@ The dev team has received a responsible disclosure saying all funds can be stole
 Before it’s too late, rescue all funds from the vault, transferring them back to the recovery account.
 
 
-# ABI Encoding
+# ABI Encoding Of Dynamic Types
 
-There two ways of encoding using the ABI. We can encode the datas with `.encode()` or `.encodePacked()` methods. If you don't know how this methods works well, you shoudl read [this documention](https://docs.soliditylang.org/en/v0.8.11/abi-spec.html).
-
-
-In the dynamic structes, the `.encodePacked()` method comes up with some problems. Let's give an example. Consider that we have a `control()` function which checks the encoded arguments data with `.encodePacked()`.
+There are two ways of encoding using the ABI. We can encode the datas with `.encode()` or `.encodePacked()` methods. If you don't know how this methods works well, you should read [this documention](https://docs.soliditylang.org/en/v0.8.11/abi-spec.html). 
 
 
-```solidity
-function control(string param1, string param2) returns (bool) external {
-    return ("cybersecurity" == abi.encodePacked(param1, param2);
-}
+When we encode the dynamic structes using with `encode()`, we are fallowing this steps:
+
+- **The offset of the dynamic data**.
+- **The length of the dynamic data**.
+- **The actual value of the dynamic data**.
+
+```
+Memory Location |    Data
+0x00            |    0000000000000000000000000000000000000000000000000000000000000020 // The offset of the data (32 in decimal)
+0x20            |    000000000000000000000000000000000000000000000000000000000000000d // The length of the data in bytes (13 in decimal)
+0x40            |    48656c6c6f2c20776f726c642100000000000000000000000000000000000000 // Value
 ```
 
-This allows the caller to get access to a great number of combinations to achieve the same result. The reason for this encode-packing `se` with `cretPassword`, would result equivalent to encoding an empty string with "cybersecurity", and also equivalent to `secretPasswor` with `d`.
+If you hex decode 48656c6c6f2c20776f726c6421 you will get "Hello, world!".
 
+
+When you use `.encodePacked()` with dynamic types (like strings or arrays), it can create a potential for **crafting collisions**, which means different inputs may produce the same encoded output. This can have security implications, especially in cases where uniqueness or unpredictability is important.
 
 <p align="center"><img width="500" src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/1633f8fd-80d3-4498-983f-728d61a22e4e"></p>
 
+
+Here's the reasons of why `.encodePacked()` can create craft collisions with dynamic types:
+
+- **Dynamic Data Length**: Dynamic types, such as strings or arrays, can have varying lengths. When you use `.encodePacked()` on dynamic data, **it doesn't include the length information in the encoding**. Instead, it concatenates the data as-is, one after the other.
+
+- **No Delimiters**: `.encodePacked()` doesn't include any delimiters or separators between the different dynamic data elements. It simply concatenates them.
+
+- **Predictable Concatenation**: Since the encoding process is deterministic (the same input will always produce the same output), if you have two different sets of dynamic data that happen to concatenate in the same order, they will produce the same encoded output.
+
+This lack of differentiation between different dynamic data inputs can be exploited by hackers to create crafted inputs that collide (produce the same output) in a way that benefits them. For example, if two different inputs produce the same hash or identifier, it can lead to unexpected behavior in a smart contract, potentially allowing an attacker to **bypass security checks or gain unauthorized access**.
+
+
+Consider that we have a `encode()` function which checks the encoded hashes.
+
+```solidity
+contract Vulnerable {
+    function encode(string memory data1, string memory data2) public pure returns (bytes32) {
+        bytes32 hash1 = keccak256(abi.encodePacked(data1, data2));
+        bytes32 hash2 = keccak256(abi.encodePacked(data2, data1)); // Reversed order
+
+        return hash1 == hash2 ? hash1 : bytes32(0); // Return hash1 if they match, otherwise return 0
+    }
+}
+```
+
+If `data1` is "Hello" and `data2` is "World," calling encode("Hello", "World") and encode("World", "Hello") will produce the same hash because `.encodePacked()` doesn't consider the order of concatenation.
 
 # Subverting
 
@@ -204,7 +236,13 @@ Checking a static position in clearly manipulable calldata can serve as an effec
 
 
 
+To take funds, we need to pass the auth part.
 
+```solidity
+if (!permissions[getActionId(selector, msg.sender, target)]) {
+  revert NotAllowed();
+}
+```
 
 
 Here are the attacker commands:
@@ -228,5 +266,9 @@ Solve the challenge.
 
 Done in 3.38s.
 ```
+
+## Security Takeaways
+
+To mitigate this issue, it's important to be cautious when using `.encodePacked()` with dynamic types. Consider using more robust methods for encoding and hashing dynamic data, such as using keccak256 (SHA-3) with appropriate delimiters and length information, or utilizing cryptographic libraries designed for data serialization and hashing. Additionally, always implement appropriate security checks and validation to prevent malicious input or collisions from causing unexpected issues in your smart contracts.
 
 **_by wasny0ps_**
