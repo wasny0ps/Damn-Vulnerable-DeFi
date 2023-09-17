@@ -180,13 +180,32 @@ Before it’s too late, rescue all funds from the vault, transferring them back 
 
 # ABI Encoding
 
-There two ways of encoding using the ABI. We can encode the datas with `.encode()` or `.encodePacked()` methods. But, the `.encodePacked()` method comes up with some problems.
+There two ways of encoding using the ABI. We can encode the datas with `.encode()` or `.encodePacked()` methods. If you don't know how this methods works well, you shoudl read [this documention](https://docs.soliditylang.org/en/v0.8.11/abi-spec.html).
 
-Let's give an example. Consider that we have `check` variable which must equal to `cybersecurity`.
 
+In the dynamic structes, the `.encodePacked()` method comes up with some problems. Let's give an example. Consider that we have a `control()` function which checks the encoded arguments data with `.encodePacked()`.
+
+
+```solidity
+function control(string param1, string param2) returns (bool) external {
+    return ("cybersecurity" == abi.encodePacked(param1, param2);
+}
+```
+
+This allows the caller to get access to a great number of combinations to achieve the same result. The reason for this encode-packing `se` with `cretPassword`, would result equivalent to encoding an empty string with "cybersecurity", and also equivalent to `secretPasswor` with `d`.
+
+
+<p align="center"><img width="500" src="https://github.com/wasny0ps/Damn-Vulnerable-DeFi/assets/87646106/1633f8fd-80d3-4498-983f-728d61a22e4e"></p>
 
 
 # Subverting
+
+Checking a static position in clearly manipulable calldata can serve as an effective way to bypass permissions, granting us the ability to execute our desired actions. In this specific scenario, this is where `sweepFunds()` comes into play.
+
+
+
+
+
 
 Here are the attacker commands:
 
