@@ -239,7 +239,7 @@ contract MultiSigWallet {
 As you understand from the contract, there is nothing replay attack check. It just verifies the signature of `_sendto`. Attackers can potentially exploit the contract by sending the victim's signature.
 
 
-In order to thwart potential attackers from reusing off-chain signatures, it is imperative that we introduce a mechanism to ensure the uniqueness of each signed transaction. **This can be achieved by generating a distinct transaction hash for every transaction, and one effective way to accomplish this is by incorporating a nonce into the transaction hash**.
+In order to thwart potential attackers from reusing off-chain signatures, it is imperative that we introduce a mechanism to ensure the uniqueness of each signed transaction. **This can be achieved by generating a distinct transaction hash for every transaction, and one effective way to accomplish this is by incorporating a **nonce** into the transaction hash**.
 
 Once a transaction is successfully executed, it becomes essential to invalidate the corresponding hash to prevent any future reuse. This multi-step approach guarantees the security and integrity of our transactions by ensuring that each signature is uniquely tied to its specific transaction, deterring malicious attempts to replay previous signatures. Now, let's delve into the secure code:
 
@@ -296,7 +296,7 @@ function _checkSignature( bytes[2] memory _sigs, bytes32 _txHash) private view r
     }
 ```
 
-In the provided code, we've made a significant enhancement by introducing a nonce parameter to both the `getTxHash()` function and the `transfer()` function. This strategic addition has effectively ensured the uniqueness of each signature and hash generated within our system.
+In the provided code, we've made a significant enhancement by introducing a `_nonce` parameter to both the `getTxHash()` function and the `transfer()` function. This strategic addition has effectively ensured the uniqueness of each signature and hash generated within our system.
 
 Another thing to note is the mapping called `is_executed` which is at the top of the contract. We use this to invalidate each hash after a transaction has been carried out. To do this, we first check if is_executed is false. If it is and the signatures are valid, we set is_executed to true, then send the required ether.
 
@@ -460,7 +460,7 @@ When we analyze v1.1.1 version GnosisSafe contract, there is two helpful functio
     }
 ```
 
-With `execTransaction()`, we can execute commans. Sure, we will **execute the code which transfers all tokens to our address**.
+With `execTransaction()`, we can execute commands. Sure, we will **execute the code which transfers all tokens to our address**. :)
 
 ```solidity
 /// @dev Returns hash to be signed by owners.
@@ -566,7 +566,6 @@ Finally, we have a `can()` function written in the inline assembly that will hel
 
 ```js
 const data = require("./data.json");
-const attackWalletDeployer = walletDeployer.connect(player);
 const attackAuthorizer = authorizer.connect(player);
 
 // Transfer funds to deploying address
@@ -685,10 +684,9 @@ await impContract.upgradeToAndCall(attackContract.address, IAttack);
 
 // Deploy 43 Wallets through wallet deployer to retrieve all tokens in the contract
 for (let i = 0; i < 43; i ++) {
-    await (await attackWalletDeployer.drop(setupDummyABIData)).wait();
+    await (await walletDeployer.connect(player).drop(setupDummyABIData)).wait();
 }
 
-await printPlayerTokenBalance()
 ```
 
 Solve the challenge.
