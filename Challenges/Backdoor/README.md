@@ -189,8 +189,8 @@ contract AttackBackdoor {
 
         Callback callback = new Callback();
         WalletRegistry walletRegistry = WalletRegistry(_walletRegistry);
-        GnosisSafeProxyFactory proxyFactory = GnosisSafeProxyFactory(walletRegistry.walletFactory());
         IERC20 token = walletRegistry.token();
+        GnosisSafeProxyFactory proxyFactory = GnosisSafeProxyFactory(walletRegistry.walletFactory());
 
         for (uint i = 0; i < _users.length;) {       
             address[] memory owners = new address[](1);
