@@ -168,6 +168,44 @@ Your goal is to take all funds from the registry. In a single transaction.
 
 # Subverting
 
+As you can see from the challenge's contract, there is only way to get all funds is triggering `proxyCreated()` function. We can trigger this function by creating a proxy with callback.
+
+```solidity
+function setup(
+        address[] calldata _owners,
+        uint256 _threshold,
+        address to,
+        bytes calldata data,
+        address fallbackHandler,
+        address paymentToken,
+        uint256 payment,
+        address payable paymentReceiver
+    ) external {
+        // setupOwners checks if the Threshold is already set, therefore preventing that this method is called twice
+        setupOwners(_owners, _threshold);
+        if (fallbackHandler != address(0)) internalSetFallbackHandler(fallbackHandler);
+        // As setupOwners can only be called if the contract has not been initialized we don't need a check for setupModules
+        setupModules(to, data);
+
+        if (payment > 0) {
+            // To avoid running into issues with EIP-170 we reuse the handlePayment function (to avoid adjusting code of that has been verified we do not adjust the method itself)
+            // baseGas = 0, gasPrice = 1 and gas = payment => amount = (payment + 0) * 1 = payment
+            handlePayment(payment, 0, 1, paymentToken, paymentReceiver);
+        }
+        emit SafeSetup(msg.sender, _owners, _threshold, to, fallbackHandler);
+    }
+```
+
+```solidity
+function setupModules(address to, bytes memory data) internal {
+        require(modules[SENTINEL_MODULES] == address(0), "GS100");
+        modules[SENTINEL_MODULES] = SENTINEL_MODULES;
+        if (to != address(0))
+            // Setup has to complete successfully or transaction fails.
+            require(execute(to, 0, data, Enum.Operation.DelegateCall, gasleft()), "GS000");
+    }
+```
+
 ```solidity
 pragma solidity ^0.8.0;
 
